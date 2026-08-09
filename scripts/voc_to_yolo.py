@@ -61,6 +61,29 @@ def voc_to_yolo_lines(xml_path: str | Path, class_to_id: dict[str, int]) -> tupl
     return lines, objects
 
 
+def voc_to_yolo_lines_forced_class(xml_path: str | Path, class_id: int) -> list[str]:
+    """
+    Sama seperti `voc_to_yolo_lines`, TAPI paksa SEMUA object di file ini
+    pakai satu `class_id` yang udah ditentukan dari luar, mengabaikan isi
+    tag <name> di XML sepenuhnya.
+
+    Dipakai buat GC10-DET: <name> di XML raw-nya itu pinyin+angka (misal
+    "3_yueyawan"), bukan teks yang bisa di-lookup ke class list Inggris -
+    ground truth kelas yang reliable buat dataset ini justru dari folder
+    angka (1-10) tempat gambarnya berada (lihat GC10_FOLDER_TO_CLASS di
+    scripts/prepare_data.py, sumbernya "Defects Description.xlsx").
+    """
+    width, height, objects = parse_voc_xml(xml_path)
+    lines = []
+    for _, xmin, ymin, xmax, ymax in objects:
+        xc = (xmin + xmax) / 2.0 / width
+        yc = (ymin + ymax) / 2.0 / height
+        w = (xmax - xmin) / width
+        h = (ymax - ymin) / height
+        lines.append(f"{class_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}")
+    return lines
+
+
 def main():
     parser = argparse.ArgumentParser(description="Debug: convert 1 VOC XML -> YOLO lines")
     parser.add_argument("--xml", required=True)
