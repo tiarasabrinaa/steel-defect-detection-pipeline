@@ -1,23 +1,17 @@
 """
-Dataset & dataloader untuk classification dan object detection.
+Dataset and DataLoader implementations for classification and object
+detection, produced by scripts/prepare_data.py and
+scripts/build_combined_dataset.py.
 
-Struktur folder yang diharapkan (dihasilkan oleh scripts/prepare_data.py
-dan scripts/build_combined_dataset.py, lihat README.md bagian 6):
+Classification layout (per dataset or combined):
+    <root>/train|val|test/<class_name>/*.jpg
 
-Classification (per dataset ATAU combined):
-    <root>/
-        train/<class_name>/*.jpg
-        val/<class_name>/*.jpg
-        test/<class_name>/*.jpg
+Detection layout, YOLO format (per dataset or combined):
+    <root>/images/{train,val,test}/*.jpg
+    <root>/labels/{train,val,test}/*.txt   # "class_id xc yc w h", normalized
 
-Detection, format YOLO (per dataset ATAU combined):
-    <root>/
-        images/{train,val,test}/*.jpg
-        labels/{train,val,test}/*.txt   # "class_id xc yc w h", normalized 0-1
-
-Urutan label index SELALU mengikuti `class_names` dari config yaml, BUKAN
-urutan alfabetis folder — supaya konsisten dengan class_mapping.py dan
-class-weight computation.
+Label indices follow `class_names` order from the config, not alphabetical
+folder order, to stay consistent with class_mapping.py.
 """
 
 from __future__ import annotations
@@ -43,7 +37,7 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
 class FolderClassificationDataset(Dataset):
-    """ImageFolder custom yang menjaga urutan label sesuai `class_names`."""
+    """ImageFolder variant that preserves label order from `class_names`."""
 
     def __init__(
         self,
@@ -60,7 +54,7 @@ class FolderClassificationDataset(Dataset):
 
         split_dir = self.root / split
         if not split_dir.exists():
-            raise FileNotFoundError(f"Split folder tidak ditemukan: {split_dir}")
+            raise FileNotFoundError(f"Split folder not found: {split_dir}")
 
         for label_idx, cls_name in enumerate(class_names):
             cls_dir = split_dir / cls_name
@@ -71,9 +65,7 @@ class FolderClassificationDataset(Dataset):
                     self.samples.append((img_path, label_idx))
 
         if not self.samples:
-            raise RuntimeError(
-                f"Tidak ada gambar ditemukan di {split_dir} untuk kelas {class_names}"
-            )
+            raise RuntimeError(f"No images found in {split_dir} for classes {class_names}")
 
     @property
     def labels(self) -> list[int]:
@@ -97,7 +89,7 @@ def build_classification_transforms(img_size: int, train: bool) -> T.Compose:
                 T.ToImage(),
                 T.RandomResizedCrop(img_size, scale=(0.7, 1.0)),
                 T.RandomHorizontalFlip(p=0.5),
-                T.RandomVerticalFlip(p=0.2),  # defect permukaan tidak punya orientasi baku
+                T.RandomVerticalFlip(p=0.2),
                 T.RandomRotation(degrees=15),
                 T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1),
                 T.ToDtype(torch.float32, scale=True),
@@ -159,18 +151,16 @@ def get_classification_dataloaders(
 
 
 # ---------------------------------------------------------------------------
-# Object Detection (format YOLO: images/<split> + labels/<split>)
+# Object detection (YOLO format: images/<split>, labels/<split>)
 # ---------------------------------------------------------------------------
 
 
 class YoloDetectionDataset(Dataset):
-    """
-    Baca dataset format YOLO dan kembalikan target ala torchvision:
-        {"boxes": FloatTensor[N,4] (xyxy absolute px), "labels": LongTensor[N]}
+    """Reads a YOLO-format dataset and returns torchvision-style targets:
+        {"boxes": FloatTensor[N,4] (xyxy, absolute px), "labels": LongTensor[N]}
 
-    `background_offset=1` dipakai untuk model torchvision (Faster R-CNN /
-    RetinaNet) yang mereservasi label 0 untuk background; set ke 0 kalau
-    dipakai di luar training loop torchvision.
+    `background_offset=1` is used for torchvision models (Faster R-CNN,
+    RetinaNet), which reserve label 0 for background.
     """
 
     def __init__(
@@ -191,7 +181,7 @@ class YoloDetectionDataset(Dataset):
         img_dir = self.root / "images" / split
         label_dir = self.root / "labels" / split
         if not img_dir.exists():
-            raise FileNotFoundError(f"Folder gambar tidak ditemukan: {img_dir}")
+            raise FileNotFoundError(f"Image folder not found: {img_dir}")
 
         self.image_paths = sorted(
             p for p in img_dir.iterdir() if p.suffix.lower() in IMG_EXTENSIONS

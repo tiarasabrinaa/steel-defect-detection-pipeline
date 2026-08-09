@@ -1,24 +1,13 @@
-"""
-Single source of truth untuk label harmonization lintas dataset.
+"""Single source of truth for label harmonization across datasets.
 
-Berisi:
-- Daftar kelas asli per dataset (GC10-DET, NEU-CLS/NEU-DET, X-SDD)
-- 20 kelas kanonik hasil union (lihat README.md bagian 2)
-- Mapping dari label asli tiap dataset -> kelas kanonik
-- Helper untuk membangun label map classification & detection (combined scenario)
-
-Semua modul lain (data_loader, scripts/build_combined_dataset.py, training
-scripts) WAJIB memakai mapping dari file ini, jangan hardcode ulang di
-tempat lain.
+Defines per-dataset class lists, the 20 canonical classes (union), the
+mapping from each dataset's original labels to canonical labels, and helper
+functions used by the data loader, preparation scripts, and training code.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
-# ---------------------------------------------------------------------------
-# 1. Kelas asli per dataset (urutan sesuai README.md)
-# ---------------------------------------------------------------------------
 
 GC10_CLASSES = [
     "punching_hole",
@@ -42,7 +31,6 @@ NEU_CLASSES = [
     "scratches",
 ]
 
-# NEU-DET pakai gambar yang sama dengan NEU-CLS, kelasnya identik.
 NEU_DET_CLASSES = NEU_CLASSES
 
 XSDD_CLASSES = [
@@ -62,46 +50,33 @@ DATASET_CLASSES = {
     "xsdd": XSDD_CLASSES,
 }
 
-# ---------------------------------------------------------------------------
-# 2. 20 kelas kanonik hasil union (README.md bagian 2, tabel "Daftar 20
-#    kelas kanonik hasil union")
-# ---------------------------------------------------------------------------
-
 CANONICAL_CLASSES = [
-    "inclusion",                     # 1  - merged: NEU.inclusion + GC10.inclusion + XSDD.slag_inclusion
-    "scratches",                     # 2  - merged: NEU.scratches + XSDD.surface_scratches
-    "crazing",                       # 3  - NEU
-    "patches",                       # 4  - NEU
-    "pitted_surface",                # 5  - NEU
-    "rolled-in_scale",               # 6  - NEU
-    "punching_hole",                 # 7  - GC10
-    "weld_line",                     # 8  - GC10
-    "crescent_gap",                  # 9  - GC10
-    "water_spot",                    # 10 - GC10
-    "oil_spot",                      # 11 - GC10
-    "silk_spot",                     # 12 - GC10
-    "waist_folding",                 # 13 - GC10
-    "crease",                        # 14 - GC10
-    "rolled_pit",                    # 15 - GC10
-    "red_iron_sheet",                # 16 - XSDD
-    "iron_sheet_ash",                # 17 - XSDD
-    "oxide_scale_of_plate_system",   # 18 - XSDD
-    "oxide_scale_of_temperature",    # 19 - XSDD
-    "finishing_roll_printing",       # 20 - XSDD
+    "inclusion",
+    "scratches",
+    "crazing",
+    "patches",
+    "pitted_surface",
+    "rolled-in_scale",
+    "punching_hole",
+    "weld_line",
+    "crescent_gap",
+    "water_spot",
+    "oil_spot",
+    "silk_spot",
+    "waist_folding",
+    "crease",
+    "rolled_pit",
+    "red_iron_sheet",
+    "iron_sheet_ash",
+    "oxide_scale_of_plate_system",
+    "oxide_scale_of_temperature",
+    "finishing_roll_printing",
 ]
 
-assert len(CANONICAL_CLASSES) == 20, "Union harus tepat 20 kelas, cek README bagian 2"
-assert len(set(CANONICAL_CLASSES)) == 20, "Ada duplikat di CANONICAL_CLASSES"
+assert len(CANONICAL_CLASSES) == 20
+assert len(set(CANONICAL_CLASSES)) == 20
 
 CANONICAL_TO_ID = {name: idx for idx, name in enumerate(CANONICAL_CLASSES)}
-
-# ---------------------------------------------------------------------------
-# 3. Mapping (dataset, label_asli) -> kelas_kanonik
-#    Hanya "inclusion" dan "scratches" yang di-merge lintas dataset;
-#    sisanya 1:1 tapi tetap didaftarkan eksplisit supaya tidak ada asumsi
-#    tersembunyi (lihat README.md bagian 2, catatan soal rolled-in_scale
-#    vs oxide_scale_*).
-# ---------------------------------------------------------------------------
 
 DATASET_TO_CANONICAL: dict[str, dict[str, str]] = {
     "gc10": {
@@ -146,41 +121,32 @@ DATASET_TO_CANONICAL: dict[str, dict[str, str]] = {
 for _ds, _mapping in DATASET_TO_CANONICAL.items():
     _orig = set(DATASET_CLASSES[_ds])
     _mapped = set(_mapping.keys())
-    assert _orig == _mapped, f"Mapping {_ds} tidak lengkap: {_orig ^ _mapped}"
+    assert _orig == _mapped, f"Incomplete mapping for {_ds}: {_orig ^ _mapped}"
     for _canon in _mapping.values():
-        assert _canon in CANONICAL_TO_ID, f"{_canon} bukan kelas kanonik valid ({_ds})"
+        assert _canon in CANONICAL_TO_ID, f"{_canon} is not a valid canonical class ({_ds})"
 
 
 @dataclass
 class DatasetSpec:
-    """Deskripsi ringkas sebuah dataset untuk keperluan loader/scripts."""
-
     name: str
     classes: list[str] = field(default_factory=list)
-    task: str = "classification"  # "classification" | "detection"
+    task: str = "classification"
 
 
 def get_dataset_classes(dataset_name: str) -> list[str]:
     if dataset_name not in DATASET_CLASSES:
-        raise KeyError(
-            f"Dataset '{dataset_name}' tidak dikenal. Pilihan: {list(DATASET_CLASSES)}"
-        )
+        raise KeyError(f"Unknown dataset '{dataset_name}'. Options: {list(DATASET_CLASSES)}")
     return DATASET_CLASSES[dataset_name]
 
 
 def canonical_id_for(dataset_name: str, original_label: str) -> int:
-    """Ubah label asli sebuah dataset menjadi index kelas kanonik (0-19)."""
     mapping = DATASET_TO_CANONICAL[dataset_name]
     canonical_name = mapping[original_label]
     return CANONICAL_TO_ID[canonical_name]
 
 
 def build_label_remap(dataset_name: str) -> dict[int, int]:
-    """
-    Bangun dict {local_class_id -> canonical_class_id} berdasarkan urutan
-    DATASET_CLASSES[dataset_name]. Dipakai saat remap file label
-    (folder classification atau .txt YOLO) ke skema gabungan (combined).
-    """
+    """Return {local_class_id: canonical_class_id} for a dataset."""
     classes = get_dataset_classes(dataset_name)
     return {
         local_id: canonical_id_for(dataset_name, label)
@@ -189,12 +155,8 @@ def build_label_remap(dataset_name: str) -> dict[int, int]:
 
 
 def combined_class_names_for(dataset_names: list[str]) -> list[str]:
-    """
-    Subset kelas kanonik yang benar-benar dipakai oleh gabungan dataset
-    tertentu (misal B4 = GC10 + NEU-DET saja, tanpa X-SDD karena tidak
-    punya bbox -> 16 kelas, bukan 20). Urutan tetap mengikuti
-    CANONICAL_CLASSES supaya id konsisten dengan skenario classification.
-    """
+    """Canonical classes actually present in a given combination of datasets,
+    ordered consistently with CANONICAL_CLASSES."""
     used = set()
     for ds in dataset_names:
         used.update(DATASET_TO_CANONICAL[ds].values())
