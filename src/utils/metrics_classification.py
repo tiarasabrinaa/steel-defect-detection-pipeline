@@ -77,28 +77,43 @@ def compute_classification_metrics(
     # Perlu >= 2 kelas dengan sample & y_prob valid. Kalau ada kelas yang
     # tidak muncul sama sekali di y_true (support=0), roc_auc_score akan
     # error -> hitung per-class secara defensif.
+    #
+    # Kasus num_classes == 2 (misal stage 1 Defect/Normal) ditangani TERPISAH:
+    # `label_binarize(y, classes=[0,1])` sengaja balikin shape (N, 1) untuk
+    # binary (konvensi sklearn - 1 kolom aja karena redundan sama negasinya),
+    # BUKAN (N, 2) - kalau dipaksa lewat jalur multi-class ovr di bawah,
+    # `y_true_bin[:, 1]` bakal IndexError. Buat binary, langsung pakai
+    # `roc_auc_score(y_true, y_prob[:, 1])` (probabilitas kelas positif).
     try:
-        y_true_bin = label_binarize(y_true, classes=labels_range)
-        auc_macro = roc_auc_score(
-            y_true_bin, y_prob, average="macro", multi_class="ovr"
-        )
-        metrics["auc_macro"] = auc_macro
-        auc_weighted = roc_auc_score(
-            y_true_bin, y_prob, average="weighted", multi_class="ovr"
-        )
-        metrics["auc_weighted"] = auc_weighted
+        if num_classes == 2:
+            auc = roc_auc_score(y_true, y_prob[:, 1])
+            metrics["auc_macro"] = auc
+            metrics["auc_weighted"] = auc
+            for cname in class_names:
+                # AUC biner cuma ada 1 ROC curve, nilainya sama buat kedua kelas.
+                metrics[f"auc_per_class.{cname.replace(' ', '_')}"] = auc
+        else:
+            y_true_bin = label_binarize(y_true, classes=labels_range)
+            auc_macro = roc_auc_score(
+                y_true_bin, y_prob, average="macro", multi_class="ovr"
+            )
+            metrics["auc_macro"] = auc_macro
+            auc_weighted = roc_auc_score(
+                y_true_bin, y_prob, average="weighted", multi_class="ovr"
+            )
+            metrics["auc_weighted"] = auc_weighted
 
-        for i, cname in enumerate(class_names):
-            safe_name = cname.replace(" ", "_")
-            if y_true_bin[:, i].sum() == 0 or y_true_bin[:, i].sum() == len(y_true_bin):
-                continue  # kelas tidak punya kedua sisi (positive & negative) di batch ini
-            try:
-                auc_i = roc_auc_score(y_true_bin[:, i], y_prob[:, i])
-                metrics[f"auc_per_class.{safe_name}"] = auc_i
-            except ValueError:
-                continue
+            for i, cname in enumerate(class_names):
+                safe_name = cname.replace(" ", "_")
+                if y_true_bin[:, i].sum() == 0 or y_true_bin[:, i].sum() == len(y_true_bin):
+                    continue  # kelas tidak punya kedua sisi (positive & negative) di batch ini
+                try:
+                    auc_i = roc_auc_score(y_true_bin[:, i], y_prob[:, i])
+                    metrics[f"auc_per_class.{safe_name}"] = auc_i
+                except ValueError:
+                    continue
     except ValueError:
-        # Terjadi kalau cuma ada 1 kelas di y_true (edge case batch kecil)
+        # Terjadi kalau cuma ada 1 kelas di y_true (edge case batch/subset kecil)
         metrics["auc_macro"] = None
         metrics["auc_weighted"] = None
 

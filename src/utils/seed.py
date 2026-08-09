@@ -22,3 +22,17 @@ def set_seed(seed: int = 42, deterministic: bool = True) -> None:
         torch.backends.cudnn.benchmark = False
     else:
         torch.backends.cudnn.benchmark = True
+
+
+def get_device() -> torch.device:
+    """Pilih device tercepat yang ada: CUDA (Nvidia) > MPS (Apple Silicon) > CPU.
+
+    MPS sering kelewat kalau cuma cek `torch.cuda.is_available()` (device
+    selection paling umum di banyak contoh kode PyTorch, tapi itu cuma cover
+    Nvidia) - di Mac M-series ini bikin training diam-diam jalan di CPU
+    padahal GPU-nya nganggur, jauh lebih lambat tanpa ada warning apapun."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")

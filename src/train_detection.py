@@ -35,7 +35,7 @@ from src.data_loader import build_ultralytics_data_yaml, get_detection_dataloade
 from src.models.detection import build_model as build_torchvision_model
 from src.utils import mlflow_utils
 from src.utils.metrics_detection import build_map_metric, compute_detection_metrics, strip_background
-from src.utils.seed import set_seed
+from src.utils.seed import get_device, set_seed
 
 # Matikan integrasi MLflow bawaan ultralytics: kita mau logging manual yang
 # konsisten dengan jalur torchvision, bukan dua run terpisah yang bentrok.
@@ -358,7 +358,7 @@ def main():
 
     config = load_config(args.config)
     set_seed(config.get("seed", 42))
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()  # CUDA > MPS (Apple Silicon) > CPU - lihat catatan di src/utils/seed.py
     print(f"Device: {device}")
 
     mlflow_utils.init_mlflow(config["experiment_name"])

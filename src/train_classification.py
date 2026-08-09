@@ -43,7 +43,7 @@ from src.utils.quantization import (
     is_qat_supported,
     prepare_qat_model,
 )
-from src.utils.seed import set_seed
+from src.utils.seed import get_device, set_seed
 
 
 def load_config(path: str) -> dict:
@@ -363,7 +363,7 @@ def main():
     config = load_config(args.config)
     set_seed(config.get("seed", 42))
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
     print(f"Device: {device}")
 
     mlflow_utils.init_mlflow(config["experiment_name"])
