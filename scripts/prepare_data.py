@@ -8,9 +8,23 @@ Struktur raw data yang di-handle (per dataset, hasil ngecek langsung isi
   GC10-DET (gc10_cls, gc10_det):
       data/raw/gc10/<1-10>/*.jpg     <- gambar, per NOMOR folder (bukan nama kelas!)
       data/raw/gc10/lable/*.xml      <- anotasi flat, <name> di XML itu PINYIN+angka
-                                         (misal "3_yueyawan") - GAK bisa dipercaya buat
-                                         parsing teks, dipetakan dari GC10_FOLDER_TO_CLASS
-                                         di bawah (sumber: data/raw/gc10/Defects Description.xlsx)
+                                         (misal "3_yueyawan") - dipetakan lewat
+                                         GC10_TAG_TO_CLASS di bawah (sumber:
+                                         data/raw/gc10/Defects Description.xlsx, kolom "标签").
+                                         PENTING: nomor folder tempat gambar berada TIDAK
+                                         SAMA dengan kelas semua object di dalamnya - 1 gambar
+                                         GC10 bisa punya lebih dari 1 jenis defect (defect
+                                         utama sesuai folder + defect sekunder kelas lain).
+                                         Buat gc10_det, kelas HARUS dibaca per-object dari
+                                         <name> XML (lewat name_remap), BUKAN dipukul rata
+                                         pakai kelas foldernya - kalau dipukul rata, defect
+                                         sekunder ke-mislabel jadi kelas defect utama folder
+                                         itu (bug nyata yang sempet kejadian & ketauan pas
+                                         di-visual-check, lihat commit fix-nya).
+                                         Buat gc10_cls (classification whole-image), pakai
+                                         kelas folder TETAP relevan/benar - itu memang
+                                         metodologi standar dataset ini buat task classification
+                                         (1 label dominan per gambar, GC10_CLASS_TO_FOLDER).
 
   NEU-CLS (neu_cls):
       GAK didownload terpisah - gambarnya SAMA kayak NEU-DET, cuma dipakai
@@ -56,7 +70,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.voc_to_yolo import parse_voc_xml, voc_to_yolo_lines, voc_to_yolo_lines_forced_class
+from scripts.voc_to_yolo import parse_voc_xml, voc_to_yolo_lines
 from src.class_mapping import get_dataset_classes
 
 IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
@@ -80,6 +94,26 @@ GC10_FOLDER_TO_CLASS = {
     "10": "waist_folding",
 }
 GC10_CLASS_TO_FOLDER = {v: k for k, v in GC10_FOLDER_TO_CLASS.items()}
+
+# Sumber SAMA (Defects Description.xlsx, kolom "标签") - ini mapping per-OBJECT
+# yang dipakai buat gc10_det, beda dari GC10_FOLDER_TO_CLASS di atas (yang
+# per-FILE, cuma valid buat gc10_cls). Tag ini persis isi tag <name> di XML.
+GC10_TAG_TO_CLASS = {
+    "1_chongkong": "punching_hole",
+    "2_hanfeng": "weld_line",
+    "3_yueyawan": "crescent_gap",
+    "4_shuiban": "water_spot",
+    "5_youban": "oil_spot",
+    "6_siban": "silk_spot",
+    "7_yiwu": "inclusion",
+    "8_yahen": "rolled_pit",
+    "9_zhehen": "crease",
+    "10_yaozhe": "waist_folding",
+    "10_yaozhed": "waist_folding",  # typo di raw XML, TERNYATA lebih umum (131x) dari yang "bener" (12x) - verified langsung scan semua XML
+}
+# NB: ada juga 1 tag korup "d" doang di seluruh dataset (1 kejadian) - sengaja
+# TIDAK dipetakan (dibiarkan ke-skip dengan warning), gak ada cara reliable
+# buat nebak itu maksudnya kelas apa tanpa cek visual manual satu-satu.
 
 # Nama folder raw X-SDD (hasil download) -> nama kelas kanonik
 # (src/class_mapping.py::XSDD_CLASSES). Beda soal spasi/singular-plural/kata.
@@ -186,16 +220,17 @@ def prepare_neu_cls_from_neu_det(
         print(f"  {cls:35s} train={counts['train']:4d}  val={counts['val']:4d}  test={counts['test']:4d}")
 
 
-# Tipe pair yang dipakai collect_pairs_fn: (xml_path, img_path, forced_class_name_or_None).
-# forced_class_name dipakai kalau <name> di XML gak bisa dipercaya (GC10);
-# None berarti pakai <name> XML langsung (NEU-DET, generic VOC).
+# collect_pairs_fn balikin list (xml_path, img_path). Kelas tiap OBJECT di
+# dalam XML selalu dibaca dari <name> tag-nya sendiri (lewat voc_to_yolo_lines
+# + name_remap kalau perlu) - folder/lokasi file cuma dipakai buat nemuin
+# pasangan file, bukan buat nentuin kelas (lihat catatan GC10 di docstring atas).
 
 
-def _collect_gc10_pairs(raw_dir: Path) -> list[tuple[Path, Path, str]]:
+def _collect_gc10_pairs(raw_dir: Path) -> list[tuple[Path, Path]]:
     ann_dir = raw_dir / "lable"
     pairs = []
     missing_xml = 0
-    for folder_num, class_name in GC10_FOLDER_TO_CLASS.items():
+    for folder_num in GC10_FOLDER_TO_CLASS:
         img_dir = raw_dir / folder_num
         if not img_dir.exists():
             continue
@@ -204,7 +239,7 @@ def _collect_gc10_pairs(raw_dir: Path) -> list[tuple[Path, Path, str]]:
                 continue
             xml_path = ann_dir / f"{img_path.stem}.xml"
             if xml_path.exists():
-                pairs.append((xml_path, img_path, class_name))
+                pairs.append((xml_path, img_path))
             else:
                 missing_xml += 1
     if missing_xml:
@@ -212,7 +247,7 @@ def _collect_gc10_pairs(raw_dir: Path) -> list[tuple[Path, Path, str]]:
     return pairs
 
 
-def _collect_neu_det_pairs(raw_dir: Path) -> list[tuple[Path, Path, None]]:
+def _collect_neu_det_pairs(raw_dir: Path) -> list[tuple[Path, Path]]:
     pairs = []
     for split_name in ["train", "validation"]:
         img_root = raw_dir / split_name / "images"
@@ -227,7 +262,7 @@ def _collect_neu_det_pairs(raw_dir: Path) -> list[tuple[Path, Path, None]]:
                     continue
                 xml_path = ann_dir / f"{img_path.stem}.xml"
                 if xml_path.exists():
-                    pairs.append((xml_path, img_path, None))
+                    pairs.append((xml_path, img_path))
     return pairs
 
 
@@ -239,7 +274,11 @@ def prepare_detection(
     test_ratio: float = 0.15,
     seed: int = 42,
     collect_pairs_fn=None,
+    name_remap: dict[str, str] | None = None,
 ) -> None:
+    """`name_remap`: {tag_asli_di_XML: nama_kelas_kanonik} - dipakai buat GC10
+    (<name> XML-nya pinyin). Diterapkan PER-OBJECT (lewat voc_to_yolo_lines),
+    bukan per-file - 1 gambar boleh punya object dengan kelas berbeda-beda."""
     raw_dir, out_dir = Path(raw_dir), Path(out_dir)
     class_to_id = {c: i for i, c in enumerate(class_names)}
 
@@ -255,32 +294,34 @@ def prepare_detection(
                 "Kalau raw_dir kamu strukturnya beda, pakai collect_pairs_fn custom."
             )
         pairs = [
-            (ann_dir / f"{p.stem}.xml", p, None)
+            (ann_dir / f"{p.stem}.xml", p)
             for p in sorted(img_dir.iterdir()) if p.suffix.lower() in IMG_EXTENSIONS
         ]
-        pairs = [(x, i, c) for x, i, c in pairs if x.exists()]
+        pairs = [(x, i) for x, i in pairs if x.exists()]
 
     if not pairs:
         raise RuntimeError(f"Tidak ada pasangan (xml, gambar) ditemukan di {raw_dir}")
 
-    # Stratifikasi: pakai forced_class kalau ada (GC10 - lebih reliable dari
-    # <name> XML), kalau nggak pakai kelas object PERTAMA di XML (NEU-DET).
-    groups: dict[str, list[tuple[Path, Path, str | None]]] = defaultdict(list)
+    # Stratifikasi split pakai kelas object PERTAMA di XML (setelah di-remap
+    # kalau perlu) sebagai "primary label" - gambar sering >1 object/kelas,
+    # jadi ini bukan stratifikasi sempurna, tapi jaga proporsi kelas kasar
+    # antara train/val/test. Kelas SEBENARNYA tiap box tetap dibaca ulang
+    # per-object pas nulis label (lihat voc_to_yolo_lines di bawah).
+    groups: dict[str, list[tuple[Path, Path]]] = defaultdict(list)
     skipped_no_object = 0
-    for xml_path, img_path, forced_class in pairs:
-        if forced_class is not None:
-            groups[forced_class].append((xml_path, img_path, forced_class))
-            continue
+    for xml_path, img_path in pairs:
         _, _, objects = parse_voc_xml(xml_path)
         if not objects:
             skipped_no_object += 1
             continue
-        groups[objects[0][0]].append((xml_path, img_path, forced_class))
+        first_name = objects[0][0]
+        primary_label = name_remap.get(first_name, first_name) if name_remap else first_name
+        groups[primary_label].append((xml_path, img_path))
 
     if skipped_no_object:
         print(f"WARNING: {skipped_no_object} file XML tanpa object, di-skip")
 
-    split_items: dict[str, list[tuple[Path, Path, str | None]]] = {"train": [], "val": [], "test": []}
+    split_items: dict[str, list[tuple[Path, Path]]] = {"train": [], "val": [], "test": []}
     summary = {}
     for label, items in groups.items():
         train, val, test = _split_list(items, val_ratio, test_ratio, seed)
@@ -289,31 +330,37 @@ def prepare_detection(
         split_items["test"] += test
         summary[label] = {"train": len(train), "val": len(val), "test": len(test)}
 
+    box_counts: dict[str, int] = defaultdict(int)
     for split_name, items in split_items.items():
         img_out = out_dir / "images" / split_name
         label_out = out_dir / "labels" / split_name
         img_out.mkdir(parents=True, exist_ok=True)
         label_out.mkdir(parents=True, exist_ok=True)
 
-        for xml_path, img_path, forced_class in items:
-            if forced_class is not None:
-                lines = voc_to_yolo_lines_forced_class(xml_path, class_to_id[forced_class])
-            else:
-                lines, _ = voc_to_yolo_lines(xml_path, class_to_id)
+        for xml_path, img_path in items:
+            lines, objects = voc_to_yolo_lines(xml_path, class_to_id, name_remap=name_remap)
+            if split_name == "train":
+                for name, *_ in objects:
+                    canon = name_remap.get(name, name) if name_remap else name
+                    if canon in class_to_id:
+                        box_counts[canon] += 1
 
             shutil.copy2(img_path, img_out / img_path.name)
             (label_out / f"{img_path.stem}.txt").write_text("\n".join(lines))
 
-    print(f"\nDistribusi jumlah object per primary-class ({raw_dir.name}):")
+    print(f"\nDistribusi gambar per primary-class ({raw_dir.name}):")
     for label, counts in summary.items():
         print(f"  {label:35s} train={counts['train']:4d}  val={counts['val']:4d}  test={counts['test']:4d}")
+    print(f"\nDistribusi jumlah BOX train per kelas sebenarnya (setelah baca per-object):")
+    for label, n in sorted(box_counts.items()):
+        print(f"  {label:35s} {n:5d}")
 
 
 TASK_REGISTRY = {
     "gc10_cls": ("gc10", prepare_classification, {"folder_aliases": GC10_CLASS_TO_FOLDER}),
     "neu_cls": ("neu_cls", prepare_neu_cls_from_neu_det, {}),
     "xsdd_cls": ("xsdd", prepare_classification, {"folder_aliases": XSDD_FOLDER_ALIASES}),
-    "gc10_det": ("gc10", prepare_detection, {"collect_pairs_fn": _collect_gc10_pairs}),
+    "gc10_det": ("gc10", prepare_detection, {"collect_pairs_fn": _collect_gc10_pairs, "name_remap": GC10_TAG_TO_CLASS}),
     "neu_det": ("neu_det", prepare_detection, {"collect_pairs_fn": _collect_neu_det_pairs}),
 }
 

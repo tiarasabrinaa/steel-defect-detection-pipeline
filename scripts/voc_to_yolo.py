@@ -42,46 +42,37 @@ def parse_voc_xml(xml_path: str | Path) -> tuple[int, int, list[tuple[str, float
     return width, height, objects
 
 
-def voc_to_yolo_lines(xml_path: str | Path, class_to_id: dict[str, int]) -> tuple[list[str], list[tuple]]:
+def voc_to_yolo_lines(
+    xml_path: str | Path,
+    class_to_id: dict[str, int],
+    name_remap: dict[str, str] | None = None,
+) -> tuple[list[str], list[tuple]]:
     """Return (yolo_lines, raw_objects). Object dengan nama kelas yang tidak
     dikenal di `class_to_id` di-skip (dengan warning) alih-alih error, supaya
-    satu XML yang typo tidak menggagalkan seluruh konversi dataset."""
+    satu XML yang typo tidak menggagalkan seluruh konversi dataset.
+
+    `name_remap` (opsional): terjemahkan isi tag <name> ke nama kelas
+    kanonik SEBELUM di-lookup ke `class_to_id` - dipakai buat GC10-DET,
+    yang <name> XML-nya pinyin+angka (misal "3_yueyawan"), bukan Inggris.
+    PENTING: remap ini per-OBJECT, bukan per-file - satu gambar GC10 bisa
+    punya lebih dari satu jenis defect berbeda dalam 1 XML (defect utama
+    sesuai folder + defect sekunder kelas lain), jadi tiap object HARUS
+    dibaca <name>-nya masing-masing, tidak boleh dipukul rata 1 kelas per file
+    (lihat commit fix bug ini utk detail kasus nyata yang ketauan)."""
     width, height, objects = parse_voc_xml(xml_path)
     lines = []
     for name, xmin, ymin, xmax, ymax in objects:
-        if name not in class_to_id:
-            print(f"WARNING: label '{name}' di {xml_path} tidak ada di class list, di-skip")
+        canonical_name = name_remap.get(name, name) if name_remap else name
+        if canonical_name not in class_to_id:
+            print(f"WARNING: label '{name}' (remap: '{canonical_name}') di {xml_path} tidak ada di class list, di-skip")
             continue
-        cls_id = class_to_id[name]
+        cls_id = class_to_id[canonical_name]
         xc = (xmin + xmax) / 2.0 / width
         yc = (ymin + ymax) / 2.0 / height
         w = (xmax - xmin) / width
         h = (ymax - ymin) / height
         lines.append(f"{cls_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}")
     return lines, objects
-
-
-def voc_to_yolo_lines_forced_class(xml_path: str | Path, class_id: int) -> list[str]:
-    """
-    Sama seperti `voc_to_yolo_lines`, TAPI paksa SEMUA object di file ini
-    pakai satu `class_id` yang udah ditentukan dari luar, mengabaikan isi
-    tag <name> di XML sepenuhnya.
-
-    Dipakai buat GC10-DET: <name> di XML raw-nya itu pinyin+angka (misal
-    "3_yueyawan"), bukan teks yang bisa di-lookup ke class list Inggris -
-    ground truth kelas yang reliable buat dataset ini justru dari folder
-    angka (1-10) tempat gambarnya berada (lihat GC10_FOLDER_TO_CLASS di
-    scripts/prepare_data.py, sumbernya "Defects Description.xlsx").
-    """
-    width, height, objects = parse_voc_xml(xml_path)
-    lines = []
-    for _, xmin, ymin, xmax, ymax in objects:
-        xc = (xmin + xmax) / 2.0 / width
-        yc = (ymin + ymax) / 2.0 / height
-        w = (xmax - xmin) / width
-        h = (ymax - ymin) / height
-        lines.append(f"{class_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}")
-    return lines
 
 
 def main():
