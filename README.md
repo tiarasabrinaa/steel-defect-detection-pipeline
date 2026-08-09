@@ -148,7 +148,8 @@ steel-defect-detection/
 │   │   ├── class_weights.py
 │   │   ├── mlflow_utils.py    # semua interaksi ke MLflow/Databricks lewat sini
 │   │   ├── metrics_classification.py
-│   │   └── metrics_detection.py
+│   │   ├── metrics_detection.py
+│   │   └── quantization.py    # FX graph-mode QAT (resnet50/effnetv2/mobilenetv3)
 │   ├── train_classification.py
 │   └── train_detection.py
 ├── configs/
@@ -229,6 +230,8 @@ python scripts/build_combined_dataset.py --task detection \
 # 3. Training classification — semua arsitektur di config, tiap arsitektur = 1 MLflow run
 python -m src.train_classification --config configs/classification/cls_gc10.yaml
 python -m src.train_classification --config configs/classification/cls_combined.yaml --architectures resnet50
+# head (linear/mlp) & quantization (QAT) diatur lewat config, lihat bagian 3 "Model customization".
+# Buat eksperimen cepat tanpa nunggu fase QAT, set quantization.enabled: false di config yang dipakai.
 
 # 4. Training detection — pilih framework (ultralytics = YOLO/RT-DETR, torchvision = Faster R-CNN/RetinaNet)
 python -m src.train_detection --config configs/detection/det_gc10.yaml --framework all
@@ -249,8 +252,10 @@ mlflow ui   # kalau tracking lokal
 4. ✅ Preprocessing pipeline (`scripts/prepare_data.py`, `scripts/build_combined_dataset.py`)
 5. ✅ Baseline training — Task A (`src/train_classification.py`, 4 skenario × arsitektur terpilih)
 6. ✅ Baseline training — Task B (`src/train_detection.py`, 3 skenario × arsitektur terpilih)
-7. Evaluasi & komparasi hasil antar skenario + antar arsitektur (pakai MLflow UI / Databricks Experiments compare-runs)
-8. Analisis cross-dataset generalization (train di satu dataset, test di dataset lain) — opsional tapi insight-nya bagus buat laporan
+7. ✅ Model customization — custom classifier head (linear/mlp) + QAT untuk resnet50/efficientnetv2_s/mobilenetv3 (lihat bagian 3)
+8. Evaluasi & komparasi hasil antar skenario + antar arsitektur (pakai MLflow UI / Databricks Experiments compare-runs)
+9. Analisis cross-dataset generalization (train di satu dataset, test di dataset lain) — opsional tapi insight-nya bagus buat laporan
+10. Freeze/unfreeze backbone strategy (linear probe / gradual unfreezing) — belum diimplementasikan, nyusul kalau dibutuhkan
 
 ---
 
