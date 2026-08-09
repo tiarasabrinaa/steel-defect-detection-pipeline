@@ -1,0 +1,39 @@
+# Skenario B1 (README.md bagian 3) - GC10-DET saja, 10 kelas, bbox bawaan.
+experiment_name: "steel-defect/detection/gc10"
+
+dataset:
+  name: gc10
+  root: data/processed/gc10_det   # format YOLO: images/{train,val,test}, labels/{train,val,test}
+  num_classes: 10
+  class_names:
+    - punching_hole
+    - weld_line
+    - crescent_gap
+    - water_spot
+    - oil_spot
+    - silk_spot
+    - inclusion
+    - waist_folding
+    - crease
+    - rolled_pit
+
+img_size: 640
+batch_size: 16
+epochs: 100
+num_workers: 4
+seed: 42
+
+frameworks:
+  ultralytics:
+    architectures: [yolov8s, yolo11s, rtdetr-l]
+    optimizer: auto
+    lr0: 0.01
+  torchvision:
+    architectures: [fasterrcnn_resnet50_fpn_v2, retinanet_resnet50_fpn_v2]
+    optimizer:
+      name: sgd
+      lr: 0.005
+      momentum: 0.9
+      weight_decay: 0.0005
+
+output_dir: results/detection/gc10

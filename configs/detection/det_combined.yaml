@@ -1,0 +1,48 @@
+# Skenario B4 (README.md bagian 3) - Gabungan GC10 + NEU-DET (X-SDD di-drop
+# dari detection karena tidak punya bbox publik, lihat README.md bagian 1
+# & 4). Union kelasnya 15 (BUKAN 16 seperti perkiraan awal di draft plan --
+# lihat src/class_mapping.py::combined_class_names_for(["gc10","neu_det"])
+# untuk angka pastinya), karena "inclusion" GC10 & NEU digabung jadi satu.
+experiment_name: "steel-defect/detection/combined"
+
+dataset:
+  name: combined
+  root: data/combined/detection
+  num_classes: 15
+  class_names:
+    - inclusion                     # merged: GC10 + NEU-DET
+    - scratches                     # dari NEU-DET saja (X-SDD di-drop dari task detection)
+    - crazing
+    - patches
+    - pitted_surface
+    - rolled-in_scale
+    - punching_hole
+    - weld_line
+    - crescent_gap
+    - water_spot
+    - oil_spot
+    - silk_spot
+    - waist_folding
+    - crease
+    - rolled_pit
+
+img_size: 640
+batch_size: 16
+epochs: 120
+num_workers: 4
+seed: 42
+
+frameworks:
+  ultralytics:
+    architectures: [yolov8s, yolo11s, rtdetr-l]
+    optimizer: auto
+    lr0: 0.01
+  torchvision:
+    architectures: [fasterrcnn_resnet50_fpn_v2, retinanet_resnet50_fpn_v2]
+    optimizer:
+      name: sgd
+      lr: 0.005
+      momentum: 0.9
+      weight_decay: 0.0005
+
+output_dir: results/detection/combined

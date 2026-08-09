@@ -1,0 +1,35 @@
+# Skenario B2 (README.md bagian 3) - NEU-DET saja (bukan NEU-CLS), 6 kelas.
+experiment_name: "steel-defect/detection/neu_det"
+
+dataset:
+  name: neu_det
+  root: data/processed/neu_det   # format YOLO: images/{train,val,test}, labels/{train,val,test}
+  num_classes: 6
+  class_names:
+    - crazing
+    - inclusion
+    - patches
+    - pitted_surface
+    - rolled-in_scale
+    - scratches
+
+img_size: 640
+batch_size: 16
+epochs: 100
+num_workers: 4
+seed: 42
+
+frameworks:
+  ultralytics:
+    architectures: [yolov8s, yolo11s, rtdetr-l]
+    optimizer: auto
+    lr0: 0.01
+  torchvision:
+    architectures: [fasterrcnn_resnet50_fpn_v2, retinanet_resnet50_fpn_v2]
+    optimizer:
+      name: sgd
+      lr: 0.005
+      momentum: 0.9
+      weight_decay: 0.0005
+
+output_dir: results/detection/neu_det

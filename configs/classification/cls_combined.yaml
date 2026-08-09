@@ -1,0 +1,61 @@
+# Skenario A4 (README.md bagian 3) - Gabungan union semua kelas, 20 kelas.
+# class_names di bawah HARUS sama persis (isi & urutan) dengan
+# src/class_mapping.py::CANONICAL_CLASSES -- jangan edit manual, kalau
+# mapping berubah, regenerate lewat scripts/build_combined_dataset.py.
+experiment_name: "steel-defect/classification/combined"
+
+dataset:
+  name: combined
+  root: data/combined/classification
+  num_classes: 20
+  class_names:
+    - inclusion                     # merged: NEU + GC10 + XSDD(slag_inclusion)
+    - scratches                     # merged: NEU + XSDD(surface_scratches)
+    - crazing
+    - patches
+    - pitted_surface
+    - rolled-in_scale
+    - punching_hole
+    - weld_line
+    - crescent_gap
+    - water_spot
+    - oil_spot
+    - silk_spot
+    - waist_folding
+    - crease
+    - rolled_pit
+    - red_iron_sheet
+    - iron_sheet_ash
+    - oxide_scale_of_plate_system
+    - oxide_scale_of_temperature
+    - finishing_roll_printing
+
+img_size: 224
+batch_size: 32
+num_workers: 4
+epochs: 60
+seed: 42
+
+optimizer:
+  name: adamw
+  lr: 0.0003
+  weight_decay: 0.00001
+
+scheduler:
+  name: cosine
+
+loss:
+  weighted: true          # WAJIB true - lihat README.md bagian 4, kelas merged (inclusion/scratches)
+  label_smoothing: 0.1    # otomatis punya jauh lebih banyak sampel dibanding kelas unik per-dataset
+
+early_stopping:
+  patience: 12
+  metric: f1_macro
+
+architectures:
+  - resnet50
+  - efficientnetv2_s
+  - convnext_tiny
+  - mobilenetv3
+
+output_dir: results/classification/combined

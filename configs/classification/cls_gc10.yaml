@@ -1,0 +1,49 @@
+# Skenario A1 (README.md bagian 3) - GC10-DET saja, 10 kelas.
+experiment_name: "steel-defect/classification/gc10"
+
+dataset:
+  name: gc10
+  root: data/processed/gc10_cls   # train/val/test masing2 berisi 10 subfolder kelas
+  num_classes: 10
+  class_names:
+    - punching_hole
+    - weld_line
+    - crescent_gap
+    - water_spot
+    - oil_spot
+    - silk_spot
+    - inclusion
+    - waist_folding
+    - crease
+    - rolled_pit
+
+img_size: 224
+batch_size: 32
+num_workers: 4
+epochs: 50
+seed: 42
+
+optimizer:
+  name: adamw
+  lr: 0.0003
+  weight_decay: 0.00001
+
+scheduler:
+  name: cosine
+
+loss:
+  weighted: false        # GC10 relatif balanced antar kelas; set true kalau setelah dicek ternyata timpang
+  label_smoothing: 0.1
+
+early_stopping:
+  patience: 10
+  metric: f1_macro
+
+# Dilatih satu-satu, tiap arsitektur = 1 MLflow run terpisah.
+architectures:
+  - resnet50
+  - efficientnetv2_s
+  - convnext_tiny
+  - mobilenetv3
+
+output_dir: results/classification/gc10

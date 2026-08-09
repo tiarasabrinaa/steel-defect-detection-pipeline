@@ -1,0 +1,31 @@
+.venv/
+
+# Secrets
+.env
+
+# Data (dataset besar, jangan commit ke git)
+data/raw/**
+data/processed/**
+data/combined/**
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/combined/.gitkeep
+
+# Training outputs
+results/**
+!results/.gitkeep
+mlruns/
+mlartifacts/
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.pyc
+venv/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,44 @@
+# Skenario A2 (README.md bagian 3) - NEU-CLS saja, 6 kelas.
+experiment_name: "steel-defect/classification/neu_cls"
+
+dataset:
+  name: neu_cls
+  root: data/processed/neu_cls
+  num_classes: 6
+  class_names:
+    - crazing
+    - inclusion
+    - patches
+    - pitted_surface
+    - rolled-in_scale
+    - scratches
+
+img_size: 224
+batch_size: 32
+num_workers: 4
+epochs: 50
+seed: 42
+
+optimizer:
+  name: adamw
+  lr: 0.0003
+  weight_decay: 0.00001
+
+scheduler:
+  name: cosine
+
+loss:
+  weighted: false        # NEU-CLS balanced (300 gambar/kelas by design)
+  label_smoothing: 0.1
+
+early_stopping:
+  patience: 10
+  metric: f1_macro
+
+architectures:
+  - resnet50
+  - efficientnetv2_s
+  - convnext_tiny
+  - mobilenetv3
+
+output_dir: results/classification/neu_cls

@@ -1,0 +1,45 @@
+# Skenario A3 (README.md bagian 3) - X-SDD saja, 7 kelas.
+experiment_name: "steel-defect/classification/xsdd"
+
+dataset:
+  name: xsdd
+  root: data/processed/xsdd
+  num_classes: 7
+  class_names:
+    - slag_inclusion
+    - red_iron_sheet
+    - iron_sheet_ash
+    - surface_scratches
+    - oxide_scale_of_plate_system
+    - finishing_roll_printing
+    - oxide_scale_of_temperature
+
+img_size: 224
+batch_size: 32
+num_workers: 4
+epochs: 50
+seed: 42
+
+optimizer:
+  name: adamw
+  lr: 0.0003
+  weight_decay: 0.00001
+
+scheduler:
+  name: cosine
+
+loss:
+  weighted: true         # X-SDD 1.360 gambar / 7 kelas -> cek distribusi, kemungkinan tidak rata
+  label_smoothing: 0.1
+
+early_stopping:
+  patience: 10
+  metric: f1_macro
+
+architectures:
+  - resnet50
+  - efficientnetv2_s
+  - convnext_tiny
+  - mobilenetv3
+
+output_dir: results/classification/xsdd
