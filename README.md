@@ -185,7 +185,6 @@ steel-defect-detection/
 │   ├── build_combined_dataset.py    # assemble stage 2 (+ --negatives_dir buat fold Severstal)
 │   ├── prepare_data.py
 │   └── voc_to_yolo.py
-├── app/                          # web app/API (roadmap poin 9, belum digarap)
 ├── notebooks/
 ├── results/
 ├── requirements.txt
@@ -206,7 +205,8 @@ steel-defect-detection/
 8. Rakit `src/pipeline.py` — chain load best checkpoint stage 1 -> kalau Defect, load best checkpoint stage 2 -> jalankan (belum dibuat)
 9. Uji end-to-end dengan data yang ada (masih pakai dataset publik, belum kamera asli)
 10. **Checkpoint penting:** begitu kamera produksi ditentukan, kumpulkan sample dari kamera asli, validasi ulang apakah model masih akurat di scale itu (bagian 4), fine-tune/kalibrasi kalau perlu
-11. Integrasi ke web app / API (folder `app/`)
+
+> Scope repo ini berhenti di checkpoint (`.pt`) hasil training stage 1 & stage 2 + `pipeline.py` buat uji end-to-end lokal. Integrasi ke web app/API itu konsumen terpisah dari model yang dihasilkan di sini, bukan bagian dari repo ini.
 
 ---
 
