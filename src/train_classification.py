@@ -116,7 +116,9 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         run_config["architecture"] = arch_name
         mlflow_utils.log_config_params(run_config)
 
-        model = build_model(arch_name, num_classes, pretrained=True).to(device)
+        model = build_model(
+            arch_name, num_classes, pretrained=True, head_cfg=config.get("head")
+        ).to(device)
 
         loss_cfg = config.get("loss", {})
         weight = None

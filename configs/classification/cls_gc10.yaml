@@ -35,6 +35,13 @@ loss:
   weighted: false        # GC10 relatif balanced antar kelas; set true kalau setelah dicek ternyata timpang
   label_smoothing: 0.1
 
+# GC10 ~2.300 gambar / 10 kelas (~230/kelas) - dataset terbesar & paling
+# balanced di antara 3 dataset di project ini, dekat dengan regime standar
+# transfer-learning ImageNet. Linear head standar timm sudah cukup, tidak
+# perlu extra dropout/bottleneck (beda dengan NEU/X-SDD/combined di bawah).
+head:
+  type: linear
+
 early_stopping:
   patience: 10
   metric: f1_macro

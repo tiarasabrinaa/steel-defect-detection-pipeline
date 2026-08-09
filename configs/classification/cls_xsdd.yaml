@@ -32,6 +32,16 @@ loss:
   weighted: true         # X-SDD 1.360 gambar / 7 kelas -> cek distribusi, kemungkinan tidak rata
   label_smoothing: 0.1
 
+# X-SDD rata-rata ~194 gambar/kelas (lebih sedikit dari NEU-CLS yang 300/
+# kelas) DAN kelasnya tidak rata (makanya loss.weighted di atas juga true) -
+# kombinasi dataset paling kecil + paling imbalance di 3 dataset ini, jadi
+# dropout head dinaikkan ke 0.4 (vs 0.3 di NEU) sebagai regularizer ekstra.
+head:
+  type: mlp
+  hidden_dim: 256
+  dropout: 0.4
+  use_batchnorm: true
+
 early_stopping:
   patience: 10
   metric: f1_macro

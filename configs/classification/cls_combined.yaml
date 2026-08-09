@@ -48,6 +48,19 @@ loss:
   weighted: true          # WAJIB true - lihat README.md bagian 4, kelas merged (inclusion/scratches)
   label_smoothing: 0.1    # otomatis punya jauh lebih banyak sampel dibanding kelas unik per-dataset
 
+# 20 kelas dengan imbalance paling parah di project ini (kelas merged -
+# Inclusion, Scratches - punya 2-3x sampel dibanding kelas unik per-dataset
+# seperti Waist Folding yang cuma dari GC10). loss.weighted saja tidak cukup
+# kalau head-nya cuma 1 Linear layer: kapasitas head yang lebih besar
+# (bottleneck 512-dim) + dropout dibutuhkan supaya model punya "ruang"
+# belajar representasi 20 kelas sebelum keputusan akhir, bukan langsung
+# collapse ke kelas dominan hasil merge.
+head:
+  type: mlp
+  hidden_dim: 512
+  dropout: 0.3
+  use_batchnorm: true
+
 early_stopping:
   patience: 12
   metric: f1_macro

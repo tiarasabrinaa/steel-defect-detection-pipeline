@@ -31,6 +31,17 @@ loss:
   weighted: false        # NEU-CLS balanced (300 gambar/kelas by design)
   label_smoothing: 0.1
 
+# NEU-CLS cuma 300 gambar/kelas (jauh lebih kecil dari GC10) - Linear head
+# langsung di atas pooled feature 2048-dim (resnet50) gampang overfit di
+# regime data sekecil ini. Bottleneck MLP (512-dim) + dropout 0.3 jadi
+# regularizer murah: paksa model belajar representasi defect yang lebih
+# ringkas sebelum keputusan kelas, bukan menghafal 300 sampel/kelas.
+head:
+  type: mlp
+  hidden_dim: 256
+  dropout: 0.3
+  use_batchnorm: true
+
 early_stopping:
   patience: 10
   metric: f1_macro
