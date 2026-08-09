@@ -38,7 +38,7 @@ Semua dataset dipakai, di-stratified sampling supaya kelas Defect vs Normal seim
 | X-SDD | ✅ semua gambar (defect-only dataset) | – |
 | Severstal | (opsional, gambar dengan defect bisa ditambah kalau butuh lebih banyak) | ✅ subset no-defect (sumber utama kelas Normal) |
 
-**Strategi balance:** total gambar "Defect" dari GC10+NEU-CLS+X-SDD (~2.300+1.800+1.360 ≈ 5.460 gambar) dijadikan acuan, lalu ambil sample "Normal" dari Severstal dalam jumlah yang sepadan (stratified, bukan asal ambil semua ribuan gambar Normal-nya — supaya gak timpang ke salah satu sisi).
+**Strategi balance:** total gambar "Defect" dari GC10+NEU-CLS+X-SDD (~2.300+1.800+1.360 ≈ 5.460 gambar) dijadikan acuan, lalu ambil sample "Normal" dari Severstal dalam jumlah yang sepadan (stratified, bukan asal ambil semua ribuan gambar Normal-nya — supaya gak timpang ke salah satu sisi). Implementasi: `scripts/prepare_severstal.py` (staging gambar defect-free dari Severstal) → `scripts/build_stage1_binary.py` (assemble + balance + split train/val/test, per-sumber supaya proporsi GC10/NEU-CLS/X-SDD/Severstal terjaga di tiap split) → config `configs/classification/cls_stage1_binary.yaml`.
 
 ### Stage 2 — Object Detection (15 kelas defect)
 
@@ -48,8 +48,10 @@ Tidak berubah dari rencana sebelumnya:
 |---|---|
 | GC10-DET | 10 kelas + bbox |
 | NEU-DET | 6 kelas + bbox (5 unik + 1 overlap "inclusion") |
-| Severstal (subset no-defect) | Negative samples (anti false-positive) |
+| Severstal (subset no-defect) | Negative samples (anti false-positive), ~10-15% dari jumlah gambar positive |
 | ~~X-SDD~~ | Gak dipakai — classification-only, gak ada bbox |
+
+Implementasi: `configs/detection/det_combined.yaml` udah persis skenario ini (union GC10-DET+NEU-DET = 15 kelas) dari sebelum README v3 ditulis, jadi tinggal dipakai langsung — tinggal build datanya lewat `scripts/build_combined_dataset.py --task detection --sources gc10=... neu_det=... --negatives_dir data/raw/severstal_clean --negative_ratio 0.12`. Negative sample ditulis sebagai label file kosong (0 object) — sudah otomatis dihandle `YoloDetectionDataset` di `src/data_loader.py`, gak perlu ubah loader.
 
 ---
 
@@ -141,34 +143,49 @@ Ini bukan gap yang "harus diputuskan sekarang" — ini catatan status yang wajib
 
 ---
 
-## 8. Struktur Project (usulan)
+## 8. Struktur Project (aktual)
+
+> Catatan implementasi: `train_classification.py`/`train_detection.py` (training loop generic, udah support arbitrary dataset+arsitektur lewat config) **sengaja TIDAK di-rename/dibongkar** — cuma dataset & config yang baru buat stage 1/2, model training scripts-nya reuse langsung. Detail keputusan ini di bagian 9 (Roadmap).
 
 ```
-steel-defect-pipeline/
+steel-defect-detection/
 ├── data/
 │   ├── raw/
 │   │   ├── gc10/
-│   │   ├── neu_cls/          # stage 1 (label saja)
-│   │   ├── neu_det/          # stage 2 (bbox)
-│   │   ├── xsdd/              # stage 1 saja
-│   │   └── severstal_clean/  # negative samples, dipakai di kedua stage
-│   ├── processed/
+│   │   ├── neu_cls/           # stage 1 (semua gambar -> label Defect)
+│   │   ├── neu_det/           # stage 2 (bbox)
+│   │   ├── xsdd/               # stage 1 saja (crop patch, gak ada bbox)
+│   │   └── severstal_clean/   # hasil scripts/prepare_severstal.py - defect-free, dipakai stage 1 & 2
+│   ├── processed/              # hasil scripts/prepare_data.py (bbox VOC->YOLO, split)
 │   └── combined/
-│       ├── stage1_binary/     # hasil stratified sampling Defect vs Normal
-│       └── stage2_detection/  # union 15 kelas GC10-DET + NEU-DET
+│       ├── stage1_binary/      # hasil scripts/build_stage1_binary.py (Defect vs Normal, balanced)
+│       └── detection/          # hasil scripts/build_combined_dataset.py (union 15 kelas + negative Severstal)
 ├── src/
+│   ├── class_mapping.py        # harmonisasi kelas (termasuk union 15 kelas GC10+NEU-DET)
 │   ├── data_loader.py
-│   ├── stratified_sampler.py  # balancing Defect vs Normal buat stage 1
-│   ├── class_mapping.py       # harmonisasi 15 kelas stage 2
-│   ├── train_classifier.py
-│   ├── train_detector.py
-│   ├── pipeline.py
-│   └── utils/
+│   ├── models/
+│   │   ├── classification.py   # builder timm, termasuk resnet18/mobilenetv3_small buat stage 1
+│   │   └── detection.py
+│   ├── utils/
+│   │   ├── mlflow_utils.py
+│   │   ├── quantization.py     # QAT - relevan banget buat stage 1 (gate classifier, harus ringan)
+│   │   └── ...
+│   ├── train_classification.py # dipakai buat stage 1 (config cls_stage1_binary.yaml) DAN skenario riset lama
+│   └── train_detection.py      # dipakai buat stage 2 (config det_combined.yaml, sudah 15 kelas)
 ├── configs/
-│   ├── classifier_mobilenetv3.yaml
-│   ├── detector_yolov8.yaml
-│   └── detector_rtdetr.yaml
-├── app/
+│   ├── classification/
+│   │   ├── cls_stage1_binary.yaml   # <- STAGE 1 (baru)
+│   │   └── cls_*.yaml                # skenario riset lama (A1-A4), tetap ada, gak kepake di flow production
+│   └── detection/
+│       ├── det_combined.yaml   # <- STAGE 2 (udah GC10+NEU-DET union 15 kelas dari awal, tinggal reuse)
+│       └── det_*.yaml           # skenario riset lama (B1/B2), tetap ada
+├── scripts/
+│   ├── prepare_severstal.py         # cari & staging gambar defect-free dari train.csv Severstal
+│   ├── build_stage1_binary.py       # assemble+balance dataset stage 1
+│   ├── build_combined_dataset.py    # assemble stage 2 (+ --negatives_dir buat fold Severstal)
+│   ├── prepare_data.py
+│   └── voc_to_yolo.py
+├── app/                          # web app/API (roadmap poin 9, belum digarap)
 ├── notebooks/
 ├── results/
 ├── requirements.txt
@@ -179,15 +196,17 @@ steel-defect-pipeline/
 
 ## 9. Roadmap
 
-1. Download GC10-DET, NEU-CLS, NEU-DET, X-SDD, subset no-defect Severstal
-2. Buat `stratified_sampler.py` — balance Defect vs Normal buat stage 1, cek juga distribusi sumber di dalam kelas Defect
-3. Buat `class_mapping.py` — harmonisasi 15 kelas stage 2 (merge "inclusion")
-4. Training & bandingkan arsitektur stage 1 (binary classifier) — pilih berdasarkan recall + latency
-5. Training & bandingkan arsitektur stage 2 (detector, 15 kelas) — pilih berdasarkan mAP + latency
-6. Rakit `pipeline.py` — gabungkan kedua model
-7. Uji end-to-end dengan data yang ada (masih pakai dataset publik, belum kamera asli)
-8. **Checkpoint penting:** begitu kamera produksi ditentukan, kumpulkan sample dari kamera asli, validasi ulang apakah model masih akurat di scale itu (bagian 4), fine-tune/kalibrasi kalau perlu
-9. Integrasi ke web app / API
+1. Download GC10-DET, NEU-CLS, NEU-DET, X-SDD, subset no-defect Severstal (Severstal: Kaggle **competition** dataset, butuh akun Kaggle + accept competition rules dulu di halaman datanya, baru bisa `kaggle competitions download`)
+2. ✅ `scripts/prepare_severstal.py` — parse `train.csv` (handle 2 varian format kolom), staging gambar defect-free ke `data/raw/severstal_clean/`
+3. ✅ `scripts/build_stage1_binary.py` — balance Defect vs Normal buat stage 1 (split per-sumber, cek distribusi sumber di dalam kelas Defect)
+4. ✅ `scripts/build_combined_dataset.py --negatives_dir` — fold negative Severstal ke stage 2 (~10-15% dari jumlah gambar positive, biar detector gak jadi kelewat konservatif — lihat bagian 6)
+5. ✅ `src/class_mapping.py` — harmonisasi 15 kelas stage 2 (merge "inclusion", sudah dipakai skenario B4 sebelumnya, angkanya konsisten)
+6. Training & bandingkan arsitektur stage 1 (binary classifier) — `python -m src.train_classification --config configs/classification/cls_stage1_binary.yaml`, pilih berdasarkan recall kelas Defect + latency
+7. Training & bandingkan arsitektur stage 2 (detector, 15 kelas) — `python -m src.train_detection --config configs/detection/det_combined.yaml --framework all`, pilih berdasarkan mAP + latency
+8. Rakit `src/pipeline.py` — chain load best checkpoint stage 1 -> kalau Defect, load best checkpoint stage 2 -> jalankan (belum dibuat)
+9. Uji end-to-end dengan data yang ada (masih pakai dataset publik, belum kamera asli)
+10. **Checkpoint penting:** begitu kamera produksi ditentukan, kumpulkan sample dari kamera asli, validasi ulang apakah model masih akurat di scale itu (bagian 4), fine-tune/kalibrasi kalau perlu
+11. Integrasi ke web app / API (folder `app/`)
 
 ---
 

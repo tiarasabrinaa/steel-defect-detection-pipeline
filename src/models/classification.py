@@ -43,10 +43,12 @@ import torch.nn as nn
 # Nama arsitektur "ramah manusia" (dipakai di config yaml) -> nama model timm.
 ARCHITECTURE_ALIASES = {
     "resnet50": "resnet50",
+    "resnet18": "resnet18",  # lebih ringan dari resnet50, kandidat stage-1 gate classifier (cepat)
     "efficientnetv2_s": "tf_efficientnetv2_s",
     "convnext_tiny": "convnext_tiny",
     "swin_tiny": "swin_tiny_patch4_window7_224",
     "mobilenetv3": "mobilenetv3_large_100",
+    "mobilenetv3_small": "mobilenetv3_small_100",  # paling ringan, kandidat utama stage-1 gate classifier
 }
 
 

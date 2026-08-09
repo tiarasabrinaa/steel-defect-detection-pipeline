@@ -1,0 +1,65 @@
+# Stage 1 (README.md v3, bagian 2-3) - gate classifier biner Defect vs
+# Normal. Dataset: SEMUA gambar GC10-DET + NEU-CLS + X-SDD jadi "Defect"
+# (~5.460), disandingkan sample "Normal" sepadan dari subset defect-free
+# Severstal (lihat scripts/prepare_severstal.py + scripts/build_stage1_binary.py).
+#
+# class_names urutannya [Normal, Defect] - index 1 = Defect = kelas positif
+# yang paling penting recall-nya (README bagian 6: "Error propagation -
+# false negative stage 1 bikin gambar gak pernah sampai stage 2, recall
+# metrik paling kritis").
+experiment_name: "steel-defect/classification/stage1_binary"
+
+dataset:
+  name: stage1_binary
+  root: data/combined/stage1_binary
+  num_classes: 2
+  class_names:
+    - Normal
+    - Defect
+
+img_size: 224
+batch_size: 64        # dataset jauh lebih besar (~10.9k gambar) dari skenario lain, batch lebih besar aman
+num_workers: 4
+epochs: 30             # dataset besar & balanced -> konvergen lebih cepat per-epoch dibanding skenario NEU/XSDD
+seed: 42
+
+optimizer:
+  name: adamw
+  lr: 0.0003
+  weight_decay: 0.00001
+
+scheduler:
+  name: cosine
+
+loss:
+  weighted: false        # sengaja udah di-stratified balance ~1:1 dari scripts/build_stage1_binary.py
+  label_smoothing: 0.1
+
+# Dataset besar & balanced by design (bukan kasus NEU-CLS/X-SDD yang kecil)
+# -> linear head standar cukup, gak butuh bottleneck+dropout ekstra kayak
+# skenario lain.
+head:
+  type: linear
+
+# QAT WAJIB relevan di sini - ini justru model yang paling butuh ringan
+# (gate awal, jalan di SETIAP gambar sebelum keputusan lanjut ke detector
+# atau nggak, README bagian 6 "Latency budget"). Backend qnnpack (ARM/edge).
+# 21 epoch pertama fp32 (70%), 9 epoch terakhir QAT.
+quantization:
+  enabled: true
+  backend: qnnpack
+  qat_start_epoch: 21
+  freeze_observer_epoch: 26
+  freeze_bn_stats_epoch: 28
+
+early_stopping:
+  patience: 8
+  metric: recall_per_class.Defect   # README bagian 7: recall kelas Defect diprioritaskan, bukan f1_macro
+
+# Arsitektur README.md v3 bagian 5 (Stage 1) - kandidat ringan/cepat buat gate classifier.
+architectures:
+  - resnet18
+  - mobilenetv3_small
+  - efficientnetv2_s
+
+output_dir: results/classification/stage1_binary

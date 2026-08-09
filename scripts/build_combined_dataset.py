@@ -12,6 +12,14 @@ Detection (X-SDD di-drop karena tidak punya bbox, lihat README.md bagian 1 & 4):
         --sources gc10=data/processed/gc10_det neu_det=data/processed/neu_det \
         --out_dir data/combined/detection
 
+Detection + negative samples (README v3 bagian 2 & 7 - fold gambar
+defect-free Severstal sebagai anti false-positive, ~10-15% dari jumlah
+gambar positive, JANGAN lebih supaya detector gak jadi terlalu konservatif):
+    python scripts/build_combined_dataset.py --task detection \
+        --sources gc10=data/processed/gc10_det neu_det=data/processed/neu_det \
+        --out_dir data/combined/detection \
+        --negatives_dir data/raw/severstal_clean --negative_ratio 0.12
+
 File gambar diberi prefix `<dataset>__` supaya tidak ada collision nama
 antar dataset, dan tetap bisa ditelusuri asal datasetnya untuk analisis
 cross-dataset generalization (README.md bagian 7, poin 8).
@@ -20,6 +28,7 @@ cross-dataset generalization (README.md bagian 7, poin 8).
 from __future__ import annotations
 
 import argparse
+import random
 import shutil
 import sys
 from pathlib import Path
@@ -134,6 +143,70 @@ def build_combined_detection(sources: dict[str, str], out_dir: str | Path) -> No
         print(f"  {cname:35s} {n:5d}")
 
 
+def _split_list(items: list, val_ratio: float, test_ratio: float, seed: int) -> tuple[list, list, list]:
+    items = list(items)
+    random.Random(seed).shuffle(items)
+    n = len(items)
+    n_val = int(round(n * val_ratio))
+    n_test = int(round(n * test_ratio))
+    val = items[:n_val]
+    test = items[n_val : n_val + n_test]
+    train = items[n_val + n_test :]
+    return train, val, test
+
+
+def add_negative_samples(
+    negatives_dir: str | Path,
+    out_dir: str | Path,
+    ratio: float,
+    val_ratio: float = 0.15,
+    test_ratio: float = 0.15,
+    seed: int = 42,
+) -> None:
+    """
+    Fold gambar negative/background (defect-free, misal subset Severstal)
+    ke dataset detection sebagai anti false-positive sample (README v3
+    bagian 2 & 7). Ditulis sebagai label file KOSONG (0 object) -
+    YoloDetectionDataset (src/data_loader.py) sudah otomatis treat file
+    label yang nggak ada/kosong sebagai "0 box", jadi loader nggak perlu diubah.
+
+    `ratio` dihitung terhadap jumlah gambar POSITIVE yang sudah ada di
+    out_dir. Sengaja dibikin kecil (README rekomendasi ~10-15%) - kalau
+    kebanyakan negative, detector beresiko jadi terlalu konservatif dan
+    malah nurunin recall (README bagian 6, "Error propagation").
+    """
+    out_dir = Path(out_dir)
+    negatives_dir = Path(negatives_dir)
+
+    total_positive = sum(
+        len(list((out_dir / "images" / split).glob("*"))) for split in SPLITS
+    )
+    target_negative = int(round(total_positive * ratio))
+
+    all_negatives = sorted(p for p in negatives_dir.rglob("*") if p.suffix.lower() in IMG_EXTENSIONS)
+    if len(all_negatives) < target_negative:
+        print(
+            f"WARNING: negative source cuma {len(all_negatives)} gambar, kurang dari target "
+            f"{target_negative} ({ratio:.0%} dari {total_positive} positive). Pakai semua yang ada."
+        )
+        target_negative = len(all_negatives)
+
+    sampled = random.Random(seed).sample(all_negatives, target_negative)
+    train, val, test = _split_list(sampled, val_ratio, test_ratio, seed)
+
+    added = {}
+    for split_name, files in [("train", train), ("val", val), ("test", test)]:
+        img_out = out_dir / "images" / split_name
+        label_out = out_dir / "labels" / split_name
+        for img_path in files:
+            dest_name = f"severstal_neg__{img_path.name}"
+            shutil.copy2(img_path, img_out / dest_name)
+            (label_out / f"severstal_neg__{img_path.stem}.txt").write_text("")
+        added[split_name] = len(files)
+
+    print(f"Negative samples ditambahkan ({ratio:.0%} dari {total_positive} positive): {added}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Bangun dataset gabungan (union label kanonik)")
     parser.add_argument("--task", required=True, choices=["classification", "detection"])
@@ -142,6 +215,15 @@ def main():
         help="Pasangan dataset_name=path_ke_processed, contoh: gc10=data/processed/gc10_cls",
     )
     parser.add_argument("--out_dir", required=True)
+    parser.add_argument(
+        "--negatives_dir", default=None,
+        help="(detection only) folder gambar defect-free buat anti false-positive, misal data/raw/severstal_clean",
+    )
+    parser.add_argument(
+        "--negative_ratio", type=float, default=0.12,
+        help="Proporsi negative terhadap jumlah gambar positive (default 0.12 = 12%%)",
+    )
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     sources = _parse_sources(args.sources)
@@ -150,6 +232,8 @@ def main():
         build_combined_classification(sources, args.out_dir)
     else:
         build_combined_detection(sources, args.out_dir)
+        if args.negatives_dir:
+            add_negative_samples(args.negatives_dir, args.out_dir, args.negative_ratio, seed=args.seed)
 
     print(f"\nSelesai. Dataset gabungan tersimpan di {args.out_dir}")
 
