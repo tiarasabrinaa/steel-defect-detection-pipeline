@@ -1,266 +1,200 @@
-# Steel Surface Defect — Multi-Dataset Benchmark (Classification + Object Detection)
+# Steel Surface Defect — Cascade Binary Classification + Detection Pipeline (v3, Prototype Phase)
 
-Project untuk membandingkan performa beberapa arsitektur pretrained pada tugas **klasifikasi** dan **object detection** cacat permukaan baja, dievaluasi per-dataset dan pada gabungan dataset (union kelas). Semua eksperimen di-*track* penuh (hyperparameter, metric per-epoch, metric final, confusion matrix, checkpoint terbaik) ke **MLflow** — lokal untuk development, atau ke **Databricks Managed MLflow** untuk kerja beneran.
-
----
-
-## 1. Dataset
-
-| Dataset | Jumlah Kelas | Jumlah Gambar | Anotasi | Sumber |
-|---|---|---|---|---|
-| **GC10-DET** | 10 | ~2.300 (3.570 termasuk varian grayscale) | Bounding box + pixel-level | [GitHub (link Baidu Pan, kode: `cdyt`)](https://github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets) |
-| **NEU-CLS** | 6 | 1.800 (300/kelas), 200×200 | Classification-only (label per gambar, tanpa bbox) | [Kaggle mirror](https://www.kaggle.com/datasets/kaustubhdikshit/neu-surface-defect-database) |
-| **X-SDD** | 7 | 1.360 | Classification-only (patch sudah di-crop, tanpa bbox) | [IEEE DataPort](https://ieee-dataport.org/documents/x-sdd) — **butuh subscription/akun IEEE** |
-
-### Daftar kelas per dataset
-
-**GC10-DET (10):** punching_hole, weld_line, crescent_gap, water_spot, oil_spot, silk_spot, inclusion, waist_folding, crease, rolled_pit
-
-**NEU-CLS (6):** crazing, inclusion, patches, pitted_surface, rolled-in_scale, scratches
-
-**X-SDD (7):** slag_inclusion, red_iron_sheet, iron_sheet_ash, surface_scratches, oxide_scale_of_plate_system, finishing_roll_printing, oxide_scale_of_temperature
-
-> ⚠️ **Catatan penting soal anotasi untuk object detection:** NEU-CLS dan X-SDD versi yang disebut di atas adalah dataset **classification-only** — tidak ada bounding box bawaan. Untuk task object detection, NEU punya varian terpisah bernama **NEU-DET** (gambar sama, tapi dengan bbox). X-SDD **tidak** punya varian bbox publik — kalau tetap mau dipakai di skenario detection, perlu anotasi manual/semi-otomatis dulu (misal pakai tools seperti ISAT/SAM-assisted labeling), atau X-SDD **di-drop** dari task detection dan hanya dipakai di task classification. Pipeline ini memilih opsi drop (lihat Task B di bawah).
+Pipeline 2-tahap: klasifikasi biner cepat (Defect vs Normal) sebagai gate awal, lanjut ke object detection multi-kelas cuma kalau ada defect. Versi prototype — belum ada kamera produksi yang fix, jadi semua dataset publik yang ada dipakai apa adanya dulu buat bangun mekanisme pipeline-nya. Kalibrasi ke scale kamera asli menyusul begitu kamera sudah ditentukan.
 
 ---
 
-## 2. Class Mapping — Union Semua Kelas (bukan cuma yang beririsan)
+## 1. Flow Sistem
 
-Skenario gabungan pakai **semua kelas dari ketiga dataset** (union), bukan cuma kelas yang muncul di ketiga-tiganya. Yang di-merge jadi satu kelas kanonik hanya yang namanya/definisinya jelas identik; sisanya tetap dipisah per dataset supaya gak ada asumsi berlebihan soal kesamaan defect. Implementasi single-source-of-truth ada di [`src/class_mapping.py`](src/class_mapping.py) — semua kode lain (data loader, scripts, training) wajib memakai mapping dari file ini.
+```
+Raw Image
+   │
+   ▼
+[Model Klasifikasi Biner] ← ringan, cepat, 2 kelas: Defect / Normal
+   │
+   ├── Prediksi: NORMAL ──────────► selesai, tampilkan "OK"
+   │
+   └── Prediksi: DEFECT
+              │
+              ▼
+      [Model Object Detection] ← 15 kelas defect + lokasi, cuma jalan kalau perlu
+              │
+              ▼
+      Bounding box lokasi defect + kelas
+```
 
-**Kelas yang di-merge (nama/definisi jelas sama):**
-- **Inclusion** ← `inclusion` (NEU) + `inclusion` (GC10) + `slag_inclusion` (X-SDD) → 3 label jadi 1
-- **Scratches** ← `scratches` (NEU) + `surface_scratches` (X-SDD) → 2 label jadi 1
+---
 
-**Kelas yang TETAP dipisah** (nama mirip tapi proses/definisi beda, atau memang unik per dataset) — termasuk `rolled-in_scale` (NEU) vs `oxide_scale_of_plate_system` / `oxide_scale_of_temperature` (X-SDD), yang sengaja **tidak** digabung karena mekanisme pembentukan defect-nya beda dan belum diverifikasi visual.
+## 2. Dataset per Stage
 
-### Daftar 20 kelas kanonik hasil union (classification, A4)
+### Stage 1 — Klasifikasi Biner (Defect vs Normal)
 
-| # | Kelas Kanonik | Sumber |
+Semua dataset dipakai, di-stratified sampling supaya kelas Defect vs Normal seimbang.
+
+| Sumber | Kontribusi ke label "Defect" | Kontribusi ke label "Normal" |
 |---|---|---|
-| 1 | Inclusion | NEU + GC10 + X-SDD (merged) |
-| 2 | Scratches | NEU + X-SDD (merged) |
-| 3 | Crazing | NEU |
-| 4 | Patches | NEU |
-| 5 | Pitted Surface | NEU |
-| 6 | Rolled-in Scale | NEU |
-| 7 | Punching Hole | GC10 |
-| 8 | Weld Line | GC10 |
-| 9 | Crescent Gap | GC10 |
-| 10 | Water Spot | GC10 |
-| 11 | Oil Spot | GC10 |
-| 12 | Silk Spot | GC10 |
-| 13 | Waist Folding | GC10 |
-| 14 | Crease | GC10 |
-| 15 | Rolled Pit | GC10 |
-| 16 | Red Iron Sheet | X-SDD |
-| 17 | Iron Sheet Ash | X-SDD |
-| 18 | Oxide Scale of Plate System | X-SDD |
-| 19 | Oxide Scale of Temperature | X-SDD |
-| 20 | Finishing Roll Printing | X-SDD |
+| GC10-DET | ✅ semua gambar (defect-only dataset) | – |
+| NEU-CLS | ✅ semua gambar (defect-only dataset) | – |
+| X-SDD | ✅ semua gambar (defect-only dataset) | – |
+| Severstal | (opsional, gambar dengan defect bisa ditambah kalau butuh lebih banyak) | ✅ subset no-defect (sumber utama kelas Normal) |
 
-> Total 20, bukan 23 (6+10+7), karena Inclusion (3→1) dan Scratches (2→1) di-merge.
->
-> **Untuk detection (B4)**, X-SDD di-drop (lihat bagian 1), jadi union kelasnya cuma dari GC10 + NEU-DET → **15 kelas** (bukan 16 seperti perkiraan awal di draft rencana — 10 GC10 + 6 NEU − 1 karena `inclusion` merge = 15). Angka pastinya dihitung otomatis oleh `src/class_mapping.py::combined_class_names_for()`, jangan hardcode manual di tempat lain.
+**Strategi balance:** total gambar "Defect" dari GC10+NEU-CLS+X-SDD (~2.300+1.800+1.360 ≈ 5.460 gambar) dijadikan acuan, lalu ambil sample "Normal" dari Severstal dalam jumlah yang sepadan (stratified, bukan asal ambil semua ribuan gambar Normal-nya — supaya gak timpang ke salah satu sisi).
+
+### Stage 2 — Object Detection (15 kelas defect)
+
+Tidak berubah dari rencana sebelumnya:
+
+| Sumber | Kontribusi |
+|---|---|
+| GC10-DET | 10 kelas + bbox |
+| NEU-DET | 6 kelas + bbox (5 unik + 1 overlap "inclusion") |
+| Severstal (subset no-defect) | Negative samples (anti false-positive) |
+| ~~X-SDD~~ | Gak dipakai — classification-only, gak ada bbox |
 
 ---
 
-## 3. Eksperimen
+## 3. Kelas
 
-### Task A — Klasifikasi
+**Stage 1 (Classifier):** 2 kelas — `Defect`, `Normal`
 
-4 skenario training, tiap skenario dicoba dengan beberapa arsitektur pretrained (transfer learning, fine-tune dari ImageNet weights, lewat [`timm`](https://github.com/huggingface/pytorch-image-models)):
+**Stage 2 (Detector):** 15 kelas defect (union GC10-DET + NEU-DET, "inclusion" di-merge):
 
-| Skenario | Dataset | Jumlah Kelas | Config |
-|---|---|---|---|
-| A1 | GC10-DET saja | 10 | `configs/classification/cls_gc10.yaml` |
-| A2 | NEU-CLS saja | 6 | `configs/classification/cls_neu.yaml` |
-| A3 | X-SDD saja | 7 | `configs/classification/cls_xsdd.yaml` |
-| A4 | Gabungan — union semua kelas | 20 | `configs/classification/cls_combined.yaml` |
-
-**Arsitektur pretrained (default 4, bisa ditambah/kurangi lewat config):**
-- `resnet50` — baseline standar, banyak referensi di paper steel defect
-- `efficientnetv2_s` (`tf_efficientnetv2_s`) — efisien, akurasi tinggi di dataset kecil
-- `convnext_tiny` — arsitektur modern, bagus untuk tekstur halus (defect permukaan sering soal tekstur)
-- `mobilenetv3` (`mobilenetv3_large_100`) — baseline ringan, buat perbandingan kalau nanti mau deploy edge
-- `swin_tiny` (`swin_tiny_patch4_window7_224`) — opsional, tinggal tambahkan ke daftar `architectures` di config
-
-**Model customization (bukan cuma pretrained-as-is):**
-- **Classifier head** (`head:` di config, lihat `src/models/classification.py`) — pilihan `linear` (default timm) atau `mlp` (bottleneck Linear→BatchNorm→GELU→Dropout→Linear). Dataset kecil/imbalance (NEU-CLS, X-SDD, combined) pakai `mlp` sebagai regularizer murah; GC10 (dataset terbesar & paling balanced) tetap `linear`. Alasan spesifik per skenario ada di comment masing-masing `configs/classification/cls_*.yaml`.
-- **Quantization-aware training (QAT)** (`quantization:` di config, lihat `src/utils/quantization.py`) — FX graph-mode QAT, aktif untuk `resnet50`/`efficientnetv2_s`/`mobilenetv3` (di-skip otomatis untuk `convnext_tiny`/`swin_tiny`, belum FX-traceable dengan stabil). Training jalan fp32 dulu beberapa epoch (bobot stabil dari pretrained weights), baru fake-quant diaktifkan di epoch-epoch terakhir, lalu di-convert jadi int8 asli setelah training selesai. Backend `qnnpack` (target ARM/edge) dipilih karena MobileNetV3 di project ini eksplisit dikandidatkan untuk deploy edge. Hasilnya (`test_quantized_*`, `fp32_model_size_mb` vs `quantized_model_size_mb`, `model_size_reduction_pct`) di-log ke MLflow sebagai basis keputusan "layak di-deploy edge atau tidak", dan checkpoint int8-nya disimpan terpisah (`best_quantized.pt`).
-
-### Task B — Object Detection
-
-3 skenario training (X-SDD di-drop, lihat bagian 1), tiap skenario dicoba beberapa arsitektur pretrained fine-tune dari COCO weights, lewat dua framework:
-
-| Skenario | Dataset | Jumlah Kelas | Config |
-|---|---|---|---|
-| B1 | GC10-DET saja | 10 | `configs/detection/det_gc10.yaml` |
-| B2 | NEU-DET saja (bukan NEU-CLS) | 6 | `configs/detection/det_neu.yaml` |
-| B4 | Gabungan GC10 + NEU-DET | 15 | `configs/detection/det_combined.yaml` |
-
-**Arsitektur pretrained:**
-- `yolov8s`, `yolo11s` — cepat, mudah fine-tune, banyak dipakai di paper steel defect (lewat `ultralytics`)
-- `rtdetr-l` — transformer-based detector, lebih modern (lewat `ultralytics`)
-- `fasterrcnn_resnet50_fpn_v2` — baseline klasik two-stage (lewat `torchvision`)
-- `retinanet_resnet50_fpn_v2` — baseline one-stage alternatif (lewat `torchvision`)
+| # | Kelas | Sumber |
+|---|---|---|
+| 1 | Inclusion | GC10-DET + NEU-DET (merged) |
+| 2 | Crazing | NEU-DET |
+| 3 | Patches | NEU-DET |
+| 4 | Pitted Surface | NEU-DET |
+| 5 | Rolled-in Scale | NEU-DET |
+| 6 | Scratches | NEU-DET |
+| 7 | Punching Hole | GC10-DET |
+| 8 | Weld Line | GC10-DET |
+| 9 | Crescent Gap | GC10-DET |
+| 10 | Water Spot | GC10-DET |
+| 11 | Oil Spot | GC10-DET |
+| 12 | Silk Spot | GC10-DET |
+| 13 | Waist Folding | GC10-DET |
+| 14 | Crease | GC10-DET |
+| 15 | Rolled Pit | GC10-DET |
 
 ---
 
-## 4. Trade-off yang Perlu Dipikirkan
+## 4. Status: Prototype, Belum Dikalibrasi ke Kamera Real
 
-- **Class imbalance** — dengan union kelas, timpangnya makin terasa: kelas hasil merge (Inclusion, Scratches) otomatis punya jumlah sampel lebih banyak (gabungan dari 2-3 dataset) dibanding kelas unik yang cuma dari satu dataset (misal Waist Folding cuma dari GC10). `loss.weighted: true` di config combined mengaktifkan weighted CrossEntropyLoss (classification, lihat `src/utils/class_weights.py`); `scripts/build_combined_dataset.py` juga otomatis print distribusi jumlah sampel/box per kelas supaya imbalance-nya kelihatan sebelum training.
-- **Domain shift antar dataset** — beda sumber kamera/pencahayaan/resolusi antara GC10, NEU, X-SDD. Model yang bagus di satu dataset belum tentu generalize ke dataset lain — insight ini bisa digali dengan evaluasi cross-dataset (load checkpoint dari satu skenario, `evaluate()` di test set dataset lain).
-- **Anotasi tidak konsisten** — GC10 punya bbox+pixel-mask, NEU-CLS/X-SDD cuma classification. Task detection otomatis lebih terbatas datasetnya (lihat Task B).
-- **Akses X-SDD** — perlu subscription/akun IEEE DataPort.
-- **Reliabilitas class mapping** — mapping "kelas beririsan" di atas berbasis nama, bukan piksel. Kalau setelah dicek visual ternyata beda karakter, hasil skenario gabungan (A4/B4) perlu di-footnote sebagai eksperimen eksploratif, bukan ground truth yang solid.
+Ini bukan gap yang "harus diputuskan sekarang" — ini catatan status yang wajib dibawa ke tahap berikutnya begitu kamera produksi sudah ditentukan.
 
----
+**Kenapa semua dataset publik defect steel itu zoom-in:** kemungkinan besar bukan kebetulan — fitur defect (retakan halus, inclusion kecil, dll) butuh resolusi/jarak dekat buat kelihatan dan bisa dilabeli, jadi dataset akademik di domain ini memang lazim dikumpulkan dari kamera dekat ke material (line-scan camera di jalur produksi), bukan wide-shot dari jauh.
 
-## 5. Metrik Evaluasi (semua di-log otomatis ke MLflow)
-
-**Klasifikasi** (`src/utils/metrics_classification.py`): Accuracy, Precision/Recall/F1 (macro **dan** weighted, plus per-class), AUC ROC one-vs-rest (macro, weighted, per-class), confusion matrix (image artifact), classification report (text artifact).
-
-**Object Detection** (`src/utils/metrics_detection.py` untuk jalur torchvision; native `ultralytics` metrics untuk jalur YOLO/RT-DETR): mAP@0.5, mAP@0.5:0.95, mAP@0.75, per-class AP, precision/recall, plus qualitative check (visualisasi prediksi vs ground truth di sample gambar test, disimpan sebagai image artifact).
+**Kalau nanti kamera produksi ditentukan:**
+- Kalau kameranya juga dipasang dekat ke material (mirip setup line-scan industrial) → data yang ada sekarang kemungkinan besar udah cukup representatif, gak perlu perubahan besar.
+- Kalau kameranya jauh/wide-shot (misal user upload foto dari HP dengan jarak gak terkontrol) → perlu collect sample dari kamera asli buat validasi, dan kemungkinan perlu fine-tuning tambahan atau augmentasi khusus (scale-jitter, copy-paste defect patch ke background yang lebih luas) sebelum dianggap production-ready.
 
 ---
 
-## 6. Struktur Project
+## 5. Eksperimen — Pilihan Arsitektur Pretrained
+
+### Stage 1 — Klasifikasi Biner
+
+| Arsitektur | Catatan |
+|---|---|
+| MobileNetV3-Small | Kandidat utama, paling ringan |
+| EfficientNetV2-S | Balance speed & akurasi |
+| ResNet18 | Baseline standar |
+
+### Stage 2 — Object Detection (15 kelas)
+
+| Arsitektur | Catatan |
+|---|---|
+| YOLOv8/YOLO11 (small/medium) | Kandidat utama |
+| RT-DETR | Alternatif transformer-based |
+| Faster R-CNN (ResNet50-FPN) | Baseline two-stage klasik |
+| RetinaNet | Alternatif one-stage |
+
+---
+
+## 6. Trade-off
+
+- **Error propagation** — false negative stage 1 (defect ke-klasifikasi "Normal") bikin gambar gak pernah sampai stage 2. Recall jadi metrik paling kritis di stage 1.
+- **Belum representasi scale kamera real** — lihat bagian 4, ini sadar-diketahui, bukan diabaikan.
+- **Class imbalance stage 2** — GC10-DET nyumbang 10 dari 15 kelas, jadi kelas dari NEU-DET otomatis lebih sedikit sampelnya. Wajib weighted loss/oversampling.
+- **Stratified sampling stage 1** — perlu dipastikan rasio Defect:Normal gak timpang drastis, dan idealnya dicek juga distribusi sumber di dalam kelas Defect (jangan sampai GC10 mendominasi 90% gara-gara paling banyak gambarnya).
+- **Latency budget** — stage 1 harus signifikan lebih cepat dari stage 2 supaya cascade-nya worth it.
+
+---
+
+## 7. Metrik Evaluasi
+
+**Stage 1 (Klasifikasi Biner):**
+- Recall & Precision untuk kelas Defect (recall diprioritaskan — false negative lebih mahal daripada false positive)
+- F1, confusion matrix
+- Breakdown recall per sumber dataset asal (GC10 vs NEU-CLS vs X-SDD) — buat lihat apakah ada sumber yang jauh lebih susah dikenali
+- Inference latency (ms/gambar)
+
+**Stage 2 (Object Detection):**
+- mAP@0.5, mAP@0.5:0.95, per-class AP
+- False positive rate di gambar clean (dari Severstal)
+- Inference latency (ms/gambar)
+
+**End-to-end:**
+- Overall recall (raw image → box keluar)
+- Total latency rata-rata
+
+---
+
+## 8. Struktur Project (usulan)
 
 ```
-steel-defect-detection/
+steel-defect-pipeline/
 ├── data/
-│   ├── raw/                  # dataset mentah hasil download manual (lihat bagian 7)
+│   ├── raw/
 │   │   ├── gc10/
-│   │   ├── neu_cls/
-│   │   ├── neu_det/
-│   │   └── xsdd/
-│   ├── processed/             # hasil scripts/prepare_data.py (split train/val/test)
-│   └── combined/              # hasil scripts/build_combined_dataset.py (label kanonik)
+│   │   ├── neu_cls/          # stage 1 (label saja)
+│   │   ├── neu_det/          # stage 2 (bbox)
+│   │   ├── xsdd/              # stage 1 saja
+│   │   └── severstal_clean/  # negative samples, dipakai di kedua stage
+│   ├── processed/
+│   └── combined/
+│       ├── stage1_binary/     # hasil stratified sampling Defect vs Normal
+│       └── stage2_detection/  # union 15 kelas GC10-DET + NEU-DET
 ├── src/
-│   ├── class_mapping.py       # single source of truth label harmonization
-│   ├── data_loader.py         # Dataset & DataLoader classification + detection
-│   ├── models/
-│   │   ├── classification.py  # builder timm (resnet50, effnetv2, convnext, dst)
-│   │   └── detection.py       # builder torchvision (Faster R-CNN, RetinaNet)
-│   ├── utils/
-│   │   ├── seed.py
-│   │   ├── class_weights.py
-│   │   ├── mlflow_utils.py    # semua interaksi ke MLflow/Databricks lewat sini
-│   │   ├── metrics_classification.py
-│   │   ├── metrics_detection.py
-│   │   └── quantization.py    # FX graph-mode QAT (resnet50/effnetv2/mobilenetv3)
-│   ├── train_classification.py
-│   └── train_detection.py
+│   ├── data_loader.py
+│   ├── stratified_sampler.py  # balancing Defect vs Normal buat stage 1
+│   ├── class_mapping.py       # harmonisasi 15 kelas stage 2
+│   ├── train_classifier.py
+│   ├── train_detector.py
+│   ├── pipeline.py
+│   └── utils/
 ├── configs/
-│   ├── classification/
-│   │   ├── cls_gc10.yaml
-│   │   ├── cls_neu.yaml
-│   │   ├── cls_xsdd.yaml
-│   │   └── cls_combined.yaml
-│   └── detection/
-│       ├── det_gc10.yaml
-│       ├── det_neu.yaml
-│       └── det_combined.yaml
-├── scripts/
-│   ├── voc_to_yolo.py           # converter VOC XML -> YOLO txt
-│   ├── prepare_data.py          # raw -> processed (split + convert format)
-│   └── build_combined_dataset.py  # processed -> combined (remap label kanonik)
-├── notebooks/                 # eksplorasi & visualisasi cepat
-├── results/                   # checkpoint & output lokal per run (juga di-log ke MLflow)
+│   ├── classifier_mobilenetv3.yaml
+│   ├── detector_yolov8.yaml
+│   └── detector_rtdetr.yaml
+├── app/
+├── notebooks/
+├── results/
 ├── requirements.txt
-├── .env.example                # template kredensial Databricks/MLflow
 └── README.md
-```
-
----
-
-## 7. Setup
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-cp .env.example .env
-# edit .env: isi DATABRICKS_HOST, DATABRICKS_TOKEN, MLFLOW_EXPERIMENT_BASE_PATH
-```
-
-### MLflow + Databricks
-
-Semua konfigurasi tracking dibaca dari environment variable (lewat `.env`, TIDAK pernah di-hardcode di kode/config), lihat `.env.example`:
-
-```bash
-MLFLOW_TRACKING_URI=databricks
-DATABRICKS_HOST=https://<your-workspace>.cloud.databricks.com
-DATABRICKS_TOKEN=<personal-access-token>
-MLFLOW_EXPERIMENT_BASE_PATH=/Users/<email-databricks-kamu>/steel-defect-detection
-```
-
-- Kalau `MLFLOW_TRACKING_URI` tidak diset / dikosongkan, otomatis fallback ke tracking lokal (`./mlruns`) — berguna buat tes pipeline dulu tanpa akun Databricks (`mlflow ui` untuk lihat hasil lokal).
-- Tiap kombinasi skenario × arsitektur = 1 MLflow run terpisah, semuanya di bawah experiment yang sama per skenario (misal `<base_path>/steel-defect/classification/gc10`), supaya gampang dibandingkan di MLflow UI / Databricks Experiments.
-- Yang di-log per run: **semua hyperparameter** dari config yaml, **semua metric per-epoch** (train loss, val accuracy/precision/recall/F1/AUC atau val mAP), **metric final di test set**, **confusion matrix / qualitative prediction** sebagai image artifact, dan **best checkpoint (`.pt`)** sebagai artifact + full model lewat `mlflow.pytorch.log_model` (bisa langsung diregister ke Databricks Model Registry).
-
-### Download & susun dataset mentah
-
-1. Download GC10-DET, NEU-CLS, NEU-DET, X-SDD dari sumber di bagian 8.
-2. Susun ke `data/raw/<dataset>/` sesuai struktur yang diharapkan `scripts/prepare_data.py`:
-   - Classification (GC10 classification variant, NEU-CLS, X-SDD): folder per kelas — `data/raw/<dataset>/<class_name>/*.jpg`
-   - Detection (GC10-DET, NEU-DET): struktur VOC — `data/raw/<dataset>/Annotations/*.xml` + `data/raw/<dataset>/JPEGImages/*.jpg`
-3. Jalankan `prepare_data.py` untuk tiap dataset (lihat contoh di bagian 8 - Cara Pakai).
-
----
-
-## 8. Cara Pakai
-
-```bash
-# 1. Reorganisasi raw -> processed (contoh NEU-CLS & GC10-DET, ulangi untuk dataset lain)
-python scripts/prepare_data.py --task neu_cls  --raw_dir data/raw/neu_cls --out_dir data/processed/neu_cls
-python scripts/prepare_data.py --task gc10_det --raw_dir data/raw/gc10   --out_dir data/processed/gc10_det
-
-# 2. (Untuk skenario A4/B4) Bangun dataset gabungan dengan label kanonik
-python scripts/build_combined_dataset.py --task classification \
-    --sources gc10=data/processed/gc10_cls neu_cls=data/processed/neu_cls xsdd=data/processed/xsdd \
-    --out_dir data/combined/classification
-
-python scripts/build_combined_dataset.py --task detection \
-    --sources gc10=data/processed/gc10_det neu_det=data/processed/neu_det \
-    --out_dir data/combined/detection
-
-# 3. Training classification — semua arsitektur di config, tiap arsitektur = 1 MLflow run
-python -m src.train_classification --config configs/classification/cls_gc10.yaml
-python -m src.train_classification --config configs/classification/cls_combined.yaml --architectures resnet50
-# head (linear/mlp) & quantization (QAT) diatur lewat config, lihat bagian 3 "Model customization".
-# Buat eksperimen cepat tanpa nunggu fase QAT, set quantization.enabled: false di config yang dipakai.
-
-# 4. Training detection — pilih framework (ultralytics = YOLO/RT-DETR, torchvision = Faster R-CNN/RetinaNet)
-python -m src.train_detection --config configs/detection/det_gc10.yaml --framework all
-python -m src.train_detection --config configs/detection/det_combined.yaml --framework ultralytics
-
-# 5. Lihat hasil
-mlflow ui   # kalau tracking lokal
-# atau buka Databricks workspace -> Experiments -> <MLFLOW_EXPERIMENT_BASE_PATH>/steel-defect/...
 ```
 
 ---
 
 ## 9. Roadmap
 
-1. Download & organisasi ulang ketiga dataset ke struktur folder standar (`data/raw/`)
-2. Spot-check visual untuk validasi class mapping (terutama kelas "Oxide/Rolled Scale")
-3. ✅ `src/class_mapping.py` — single source of truth buat label harmonization
-4. ✅ Preprocessing pipeline (`scripts/prepare_data.py`, `scripts/build_combined_dataset.py`)
-5. ✅ Baseline training — Task A (`src/train_classification.py`, 4 skenario × arsitektur terpilih)
-6. ✅ Baseline training — Task B (`src/train_detection.py`, 3 skenario × arsitektur terpilih)
-7. ✅ Model customization — custom classifier head (linear/mlp) + QAT untuk resnet50/efficientnetv2_s/mobilenetv3 (lihat bagian 3)
-8. Evaluasi & komparasi hasil antar skenario + antar arsitektur (pakai MLflow UI / Databricks Experiments compare-runs)
-9. Analisis cross-dataset generalization (train di satu dataset, test di dataset lain) — opsional tapi insight-nya bagus buat laporan
-10. Freeze/unfreeze backbone strategy (linear probe / gradual unfreezing) — belum diimplementasikan, nyusul kalau dibutuhkan
+1. Download GC10-DET, NEU-CLS, NEU-DET, X-SDD, subset no-defect Severstal
+2. Buat `stratified_sampler.py` — balance Defect vs Normal buat stage 1, cek juga distribusi sumber di dalam kelas Defect
+3. Buat `class_mapping.py` — harmonisasi 15 kelas stage 2 (merge "inclusion")
+4. Training & bandingkan arsitektur stage 1 (binary classifier) — pilih berdasarkan recall + latency
+5. Training & bandingkan arsitektur stage 2 (detector, 15 kelas) — pilih berdasarkan mAP + latency
+6. Rakit `pipeline.py` — gabungkan kedua model
+7. Uji end-to-end dengan data yang ada (masih pakai dataset publik, belum kamera asli)
+8. **Checkpoint penting:** begitu kamera produksi ditentukan, kumpulkan sample dari kamera asli, validasi ulang apakah model masih akurat di scale itu (bagian 4), fine-tune/kalibrasi kalau perlu
+9. Integrasi ke web app / API
 
 ---
 
 ## 10. Catatan Sumber
 
-- GC10-DET: [github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets](https://github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets)
+- GC10-DET: [github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets](https://github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets) (link Baidu Pan, kode: `cdyt`)
 - NEU-CLS (mirror): [kaggle.com/datasets/kaustubhdikshit/neu-surface-defect-database](https://www.kaggle.com/datasets/kaustubhdikshit/neu-surface-defect-database)
-- X-SDD: [ieee-dataport.org/documents/x-sdd](https://ieee-dataport.org/documents/x-sdd) (butuh subscription)
+- NEU-DET: [ieee-dataport.org/documents/neu-det](https://ieee-dataport.org/documents/neu-det)
+- X-SDD: [ieee-dataport.org/documents/x-sdd](https://ieee-dataport.org/documents/x-sdd) (butuh subscription/akun IEEE)
+- Severstal Steel Defect Dataset: [kaggle.com/c/severstal-steel-defect-detection](https://www.kaggle.com/c/severstal-steel-defect-detection/data)
