@@ -16,6 +16,7 @@ results/**
 !results/.gitkeep
 mlruns/
 mlartifacts/
+runs/
 *.pt
 *.pth
 

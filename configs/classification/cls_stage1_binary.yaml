@@ -35,11 +35,23 @@ loss:
   weighted: false        # sengaja udah di-stratified balance ~1:1 dari scripts/build_stage1_binary.py
   label_smoothing: 0.1
 
-# Dataset besar & balanced by design (bukan kasus NEU-CLS/X-SDD yang kecil)
-# -> linear head standar cukup, gak butuh bottleneck+dropout ekstra kayak
-# skenario lain.
+# Beda alasan dari NEU/X-SDD (yang butuh mlp karena dataset KECIL) - stage 1
+# ini datasetnya udah besar (~10.9k), tapi gabungan dari 4 SUMBER YANG BEDA
+# BANGET kamera/domainnya (GC10 line-scan industrial, NEU line-scan, X-SDD
+# patch ter-crop, Severstal strip photo). Risiko konkretnya: linear head
+# langsung di atas pooled feature itu decision boundary-nya cuma 1 garis
+# lurus - gampang "curang" belajar shortcut "ini dari sumber/kamera mana"
+# (yang kebetulan berkorelasi kuat sama label, krn kelas Normal 100% dari
+# Severstal & kelas Defect 100% dari GC10+NEU+XSDD) alih-alih beneran
+# belajar tekstur defect vs mulus. Bottleneck MLP+dropout maksa representasi
+# dimampatin dulu lewat non-linearity sebelum keputusan akhir, mempersulit
+# shortcut "hafalan sumber" itu (bukan garansi hilang total, tapi mitigasi
+# konkret) - lihat juga README bagian 2 soal risiko ini pas milih Severstal.
 head:
-  type: linear
+  type: mlp
+  hidden_dim: 512
+  dropout: 0.3
+  use_batchnorm: true
 
 # QAT WAJIB relevan di sini - ini justru model yang paling butuh ringan
 # (gate awal, jalan di SETIAP gambar sebelum keputusan lanjut ke detector
