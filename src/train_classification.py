@@ -177,10 +177,14 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         best_ckpt_path = output_dir / "best.pt"
 
         for epoch in range(1, epochs + 1):
-            if (
-                qat_requested and qat_supported and not qat_active and not qat_give_up
-                and epoch > qat_start_epoch
-            ):
+            qat_not_tried_yet = qat_requested and qat_supported and not qat_active and not qat_give_up
+            # QAT diaktifkan begitu SALAH SATU kejadian duluan: (a) udah nyampe
+            # epoch terjadwal (qat_start_epoch), ATAU (b) training baru mau
+            # early-stop (epochs_without_improve udah nyentuh patience) dan QAT
+            # belum sempat dicoba - daripada run langsung berhenti tanpa pernah
+            # nyoba QAT sama sekali, coba dulu QAT (dengan patience baru yang
+            # fresh); baru kalau QAT JUGA plateau, run beneran berhenti.
+            if qat_not_tried_yet and (epoch > qat_start_epoch or epochs_without_improve >= patience):
                 fp32_reference_state_dict = copy.deepcopy(
                     best_state_dict if best_state_dict is not None else model.state_dict()
                 )
@@ -259,8 +263,13 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
                 epochs_without_improve += 1
 
             if epochs_without_improve >= patience:
-                print(f"[{arch_name}] early stopping di epoch {epoch} (patience={patience})")
-                break
+                if qat_requested and qat_supported and not qat_active and not qat_give_up:
+                    # jangan stop dulu - epoch berikutnya bakal ke-trigger blok
+                    # QAT-activation di atas (kondisi (b)) alih-alih beneran break.
+                    print(f"[{arch_name}] mau early-stop di epoch {epoch}, tapi QAT belum dicoba - lanjut ke fase QAT dulu")
+                else:
+                    print(f"[{arch_name}] early stopping di epoch {epoch} (patience={patience})")
+                    break
 
         # load bobot terbaik sebelum evaluasi final & logging model
         if best_state_dict is not None:
