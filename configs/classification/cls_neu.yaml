@@ -42,6 +42,16 @@ head:
   dropout: 0.3
   use_batchnorm: true
 
+# Sama seperti cls_gc10.yaml (lihat penjelasan di sana). qat_start_epoch
+# tetap 35/50 karena epoch budget sama; dataset NEU-CLS kecil jadi observer
+# QAT butuh beberapa epoch stabil dulu sebelum di-freeze.
+quantization:
+  enabled: true
+  backend: qnnpack
+  qat_start_epoch: 35
+  freeze_observer_epoch: 40
+  freeze_bn_stats_epoch: 45
+
 early_stopping:
   patience: 10
   metric: f1_macro

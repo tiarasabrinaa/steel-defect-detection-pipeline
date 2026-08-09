@@ -61,6 +61,19 @@ head:
   dropout: 0.3
   use_batchnorm: true
 
+# Sama seperti cls_gc10.yaml, disesuaikan ke epoch budget 60 (bukan 50):
+# 42 epoch pertama fp32 (proporsi warm-up sama, 70%), baru QAT di 18 epoch
+# terakhir. Skenario ini yang paling relevan buat "worth it gak deploy edge
+# model 20-kelas" - kalau accuracy_drop_f1_macro-nya besar di sini, itu
+# sinyal kelas hasil merge (Inclusion/Scratches) paling rawan kena noise
+# kuantisasi karena representasinya sudah dipaksa lebih general dari awal.
+quantization:
+  enabled: true
+  backend: qnnpack
+  qat_start_epoch: 42
+  freeze_observer_epoch: 48
+  freeze_bn_stats_epoch: 55
+
 early_stopping:
   patience: 12
   metric: f1_macro

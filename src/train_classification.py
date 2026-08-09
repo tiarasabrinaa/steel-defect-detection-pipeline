@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import io
 import time
 from pathlib import Path
 
@@ -35,6 +36,13 @@ from src.models.classification import build_model
 from src.utils import mlflow_utils
 from src.utils.class_weights import compute_class_weights
 from src.utils.metrics_classification import compute_classification_metrics
+from src.utils.quantization import (
+    QAT_SUPPORTED_ARCHITECTURES,
+    convert_to_quantized,
+    get_state_dict_size_mb,
+    is_qat_supported,
+    prepare_qat_model,
+)
 from src.utils.seed import set_seed
 
 
@@ -141,6 +149,25 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         patience = early_stop_cfg.get("patience", epochs)
         monitor_metric = early_stop_cfg.get("metric", "f1_macro")
 
+        # --- QAT setup (opsional, lihat src/utils/quantization.py) ---
+        quant_cfg = config.get("quantization", {})
+        qat_requested = quant_cfg.get("enabled", False)
+        qat_supported = is_qat_supported(arch_name)
+        qat_backend = quant_cfg.get("backend", "qnnpack")
+        qat_start_epoch = quant_cfg.get("qat_start_epoch", 0)
+        freeze_observer_epoch = quant_cfg.get("freeze_observer_epoch")
+        freeze_bn_stats_epoch = quant_cfg.get("freeze_bn_stats_epoch")
+        qat_active = False
+        qat_give_up = False
+        fp32_reference_state_dict = None  # snapshot fp32 tepat sebelum QAT aktif, buat bandingkan size/akurasi
+
+        if qat_requested and not qat_supported:
+            print(
+                f"[{arch_name}] quantization.enabled=true tapi arsitektur ini belum "
+                f"didukung QAT (FX trace tidak stabil). Didukung: {QAT_SUPPORTED_ARCHITECTURES}. "
+                "Training tetap jalan fp32 biasa."
+            )
+
         best_score = -float("inf")
         best_state_dict = None
         epochs_without_improve = 0
@@ -150,6 +177,46 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         best_ckpt_path = output_dir / "best.pt"
 
         for epoch in range(1, epochs + 1):
+            if (
+                qat_requested and qat_supported and not qat_active and not qat_give_up
+                and epoch > qat_start_epoch
+            ):
+                fp32_reference_state_dict = copy.deepcopy(
+                    best_state_dict if best_state_dict is not None else model.state_dict()
+                )
+                try:
+                    example_images, _ = next(iter(train_loader))
+                    model = prepare_qat_model(model, example_images[:1], backend=qat_backend).to(device)
+                    # parameter tree berubah total (observer/fake-quant modules
+                    # baru) -> optimizer & scheduler harus dibangun ulang.
+                    optimizer = build_optimizer(model, config.get("optimizer", {}))
+                    if scheduler is not None:
+                        scheduler = CosineAnnealingLR(optimizer, T_max=max(epochs - epoch + 1, 1))
+                    # reset tracking best-checkpoint: state_dict fp32 lama sudah
+                    # tidak kompatibel dengan struktur model QAT yang baru.
+                    best_score = -float("inf")
+                    best_state_dict = None
+                    epochs_without_improve = 0
+                    qat_active = True
+                    print(f"[{arch_name}] QAT diaktifkan mulai epoch {epoch} (backend={qat_backend})")
+                except Exception as exc:  # FX trace bisa gagal tergantung versi timm/torch
+                    qat_give_up = True
+                    print(f"[{arch_name}] gagal prepare QAT ({exc}); lanjut training fp32 biasa")
+
+            if qat_active:
+                if freeze_observer_epoch is not None and epoch == freeze_observer_epoch:
+                    try:
+                        model.apply(torch.ao.quantization.disable_observer)
+                        print(f"[{arch_name}] observer di-freeze di epoch {epoch}")
+                    except Exception as exc:
+                        print(f"[{arch_name}] WARNING: gagal freeze observer ({exc}), lanjut tanpa freeze")
+                if freeze_bn_stats_epoch is not None and epoch == freeze_bn_stats_epoch:
+                    try:
+                        model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
+                        print(f"[{arch_name}] BatchNorm stats di-freeze di epoch {epoch}")
+                    except Exception as exc:
+                        print(f"[{arch_name}] WARNING: gagal freeze BN stats ({exc}), lanjut tanpa freeze")
+
             t0 = time.time()
             train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
             val_result = evaluate(model, val_loader, device, class_names)
@@ -162,6 +229,7 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
                 "train_loss": train_loss,
                 "lr": optimizer.param_groups[0]["lr"],
                 "epoch_time_sec": time.time() - t0,
+                "qat_active": 1.0 if qat_active else 0.0,
                 **val_scalars,
             }
             mlflow_utils.log_metrics(epoch_metrics, step=epoch)
@@ -214,12 +282,73 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         mlflow_utils.log_pt_checkpoint(best_ckpt_path, artifact_path="checkpoints")
 
         # full model juga di-log lewat mlflow.pytorch supaya bisa langsung
-        # di-register / di-serve dari Databricks Model Registry.
+        # di-register / di-serve dari Databricks Model Registry. FX GraphModule
+        # (hasil QAT) kadang rewel soal pickling tergantung versi torch/mlflow
+        # -> jangan sampai gagalnya langkah ini menghapus semua metric run.
         import mlflow.pytorch
 
-        mlflow.pytorch.log_model(model, artifact_path="model")
+        try:
+            mlflow.pytorch.log_model(model, artifact_path="model")
+        except Exception as exc:
+            print(f"[{arch_name}] WARNING: mlflow.pytorch.log_model gagal ({exc}), lanjut tanpa full-model artifact")
+
+        if qat_active:
+            _log_quantized_model(
+                arch_name, model, fp32_reference_state_dict, test_loader, class_names,
+                output_dir, qat_backend,
+            )
 
         print(f"[{arch_name}] selesai. best val_{monitor_metric}={best_score:.4f}")
+
+
+def _log_quantized_model(
+    arch_name: str,
+    prepared_model: nn.Module,
+    fp32_reference_state_dict: dict | None,
+    test_loader,
+    class_names: list[str],
+    output_dir: Path,
+    backend: str,
+) -> None:
+    """
+    Convert model hasil QAT (fake-quant) ke int8 asli, evaluasi di test set
+    (CPU, kernel quantized cuma jalan di CPU), lalu bandingkan size & akurasi
+    vs referensi fp32 -- ini metric yang sebenarnya relevan buat keputusan
+    "layak deploy edge atau tidak" (README.md, MobileNetV3 sebagai kandidat
+    edge deploy).
+    """
+    quantized_model = convert_to_quantized(prepared_model)
+    quant_test_result = evaluate(quantized_model, test_loader, torch.device("cpu"), class_names)
+    quant_test_scalars = {f"test_quantized_{k}": v for k, v in quant_test_result["scalars"].items()}
+    mlflow_utils.log_metrics(quant_test_scalars)
+
+    quant_size_mb = get_state_dict_size_mb(quantized_model)
+    size_metrics = {"quantized_model_size_mb": quant_size_mb}
+    if fp32_reference_state_dict is not None:
+        buf = io.BytesIO()
+        torch.save(fp32_reference_state_dict, buf)
+        fp32_size_mb = buf.getbuffer().nbytes / (1024 * 1024)
+        size_metrics["fp32_model_size_mb"] = fp32_size_mb
+        if fp32_size_mb > 0:
+            size_metrics["model_size_reduction_pct"] = (1 - quant_size_mb / fp32_size_mb) * 100
+    mlflow_utils.log_metrics(size_metrics)
+
+    quantized_ckpt_path = output_dir / "best_quantized.pt"
+    torch.save(
+        {
+            "arch_name": arch_name,
+            "class_names": class_names,
+            "backend": backend,
+            "state_dict": quantized_model.state_dict(),
+        },
+        quantized_ckpt_path,
+    )
+    mlflow_utils.log_pt_checkpoint(quantized_ckpt_path, artifact_path="checkpoints")
+
+    print(
+        f"[{arch_name}] QAT selesai. quantized size={quant_size_mb:.2f}MB, "
+        f"test f1_macro (quantized)={quant_test_result['scalars']['f1_macro']:.4f}"
+    )
 
 
 def main():

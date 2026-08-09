@@ -42,6 +42,23 @@ loss:
 head:
   type: linear
 
+# QAT (quantization-aware training, lihat src/utils/quantization.py) -
+# otomatis di-skip untuk convnext_tiny (belum didukung FX trace), aktif
+# untuk resnet50/efficientnetv2_s/mobilenetv3. Backend "qnnpack" (ARM)
+# karena kandidat edge-deploy paling relevan di README adalah MobileNetV3,
+# tapi resnet50/efficientnetv2_s dilatih juga biar ada baseline pembanding
+# "seberapa besar akurasi turun kalau di-quantize" antar arsitektur.
+# 35 epoch pertama tetap fp32 (bobot stabil dulu dari pretrained), baru 15
+# epoch terakhir disimulasikan noise int8 (QAT), observer di-freeze di
+# epoch 40 dan BN stats di epoch 45 (standar praktik QAT PyTorch: stabilkan
+# statistik sebelum convert final ke int8).
+quantization:
+  enabled: true
+  backend: qnnpack
+  qat_start_epoch: 35
+  freeze_observer_epoch: 40
+  freeze_bn_stats_epoch: 45
+
 early_stopping:
   patience: 10
   metric: f1_macro

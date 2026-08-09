@@ -42,6 +42,17 @@ head:
   dropout: 0.4
   use_batchnorm: true
 
+# Sama seperti cls_gc10.yaml. X-SDD dataset paling kecil di 3 dataset ini -
+# fase fp32 warm-up (35 epoch) penting supaya bobot cukup stabil sebelum
+# ditambah noise kuantisasi, biar kombinasi "data sedikit + noise int8"
+# nggak bikin training kolaps.
+quantization:
+  enabled: true
+  backend: qnnpack
+  qat_start_epoch: 35
+  freeze_observer_epoch: 40
+  freeze_bn_stats_epoch: 45
+
 early_stopping:
   patience: 10
   metric: f1_macro

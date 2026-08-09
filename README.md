@@ -85,6 +85,10 @@ Skenario gabungan pakai **semua kelas dari ketiga dataset** (union), bukan cuma 
 - `mobilenetv3` (`mobilenetv3_large_100`) — baseline ringan, buat perbandingan kalau nanti mau deploy edge
 - `swin_tiny` (`swin_tiny_patch4_window7_224`) — opsional, tinggal tambahkan ke daftar `architectures` di config
 
+**Model customization (bukan cuma pretrained-as-is):**
+- **Classifier head** (`head:` di config, lihat `src/models/classification.py`) — pilihan `linear` (default timm) atau `mlp` (bottleneck Linear→BatchNorm→GELU→Dropout→Linear). Dataset kecil/imbalance (NEU-CLS, X-SDD, combined) pakai `mlp` sebagai regularizer murah; GC10 (dataset terbesar & paling balanced) tetap `linear`. Alasan spesifik per skenario ada di comment masing-masing `configs/classification/cls_*.yaml`.
+- **Quantization-aware training (QAT)** (`quantization:` di config, lihat `src/utils/quantization.py`) — FX graph-mode QAT, aktif untuk `resnet50`/`efficientnetv2_s`/`mobilenetv3` (di-skip otomatis untuk `convnext_tiny`/`swin_tiny`, belum FX-traceable dengan stabil). Training jalan fp32 dulu beberapa epoch (bobot stabil dari pretrained weights), baru fake-quant diaktifkan di epoch-epoch terakhir, lalu di-convert jadi int8 asli setelah training selesai. Backend `qnnpack` (target ARM/edge) dipilih karena MobileNetV3 di project ini eksplisit dikandidatkan untuk deploy edge. Hasilnya (`test_quantized_*`, `fp32_model_size_mb` vs `quantized_model_size_mb`, `model_size_reduction_pct`) di-log ke MLflow sebagai basis keputusan "layak di-deploy edge atau tidak", dan checkpoint int8-nya disimpan terpisah (`best_quantized.pt`).
+
 ### Task B — Object Detection
 
 3 skenario training (X-SDD di-drop, lihat bagian 1), tiap skenario dicoba beberapa arsitektur pretrained fine-tune dari COCO weights, lewat dua framework:
