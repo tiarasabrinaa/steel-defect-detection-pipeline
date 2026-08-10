@@ -52,7 +52,7 @@ class FolderClassificationDataset(Dataset):
             if not cls_dir.exists():
                 continue
             for img_path in sorted(cls_dir.iterdir()):
-                if img_path.suffix.lower() in IMG_EXTENSIONS:
+                if img_path.suffix.lower() in IMG_EXTENSIONS and not img_path.name.startswith("."):
                     self.samples.append((img_path, label_idx))
 
         if not self.samples:
@@ -167,7 +167,8 @@ class YoloDetectionDataset(Dataset):
             raise FileNotFoundError(f"Image folder not found: {img_dir}")
 
         self.image_paths = sorted(
-            p for p in img_dir.iterdir() if p.suffix.lower() in IMG_EXTENSIONS
+            p for p in img_dir.iterdir()
+            if p.suffix.lower() in IMG_EXTENSIONS and not p.name.startswith(".")
         )
         self.label_dir = label_dir
 
