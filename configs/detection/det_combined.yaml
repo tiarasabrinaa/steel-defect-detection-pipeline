@@ -30,15 +30,22 @@ seed: 42
 
 frameworks:
   ultralytics:
-    architectures: [yolov8s, yolo11s, rtdetr-l]
+    architectures: [yolo11s]
     optimizer: auto
     lr0: 0.01
   torchvision:
-    architectures: [fasterrcnn_resnet50_fpn_v2, retinanet_resnet50_fpn_v2]
+    architectures: [fasterrcnn_resnet50_fpn_v2]
     optimizer:
       name: sgd
       lr: 0.005
       momentum: 0.9
       weight_decay: 0.0005
+  rfdetr:
+    architectures: [rfdetr-medium]
+    dataset_dir: data/combined/detection_coco
+    batch_size: 4
+    grad_accum_steps: 4
+    lr: 0.0001
+    early_stopping_patience: 10
 
 output_dir: results/detection/combined

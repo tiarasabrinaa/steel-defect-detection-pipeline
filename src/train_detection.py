@@ -28,6 +28,13 @@ from ultralytics import settings as ultralytics_settings
 
 ultralytics_settings.update({"mlflow": False})  # logging is handled manually below
 
+RFDETR_MODEL_CLASSES = {
+    "rfdetr-nano": "RFDETRNano",
+    "rfdetr-small": "RFDETRSmall",
+    "rfdetr-medium": "RFDETRMedium",
+    "rfdetr-large": "RFDETRLarge",
+}  # rfdetr is imported lazily inside train_rfdetr_architecture (heavy import: torch, transformers, lightning)
+
 
 def load_config(path: str) -> dict:
     with open(path) as f:
@@ -123,6 +130,97 @@ def train_ultralytics_architecture(arch_name: str, config: dict) -> None:
                 mlflow_utils.log_artifact_file(fpath, artifact_path="plots")
 
         print(f"[{arch_name}] done. test mAP50-95={scalars['test_mAP_50_95']:.4f}")
+
+
+def train_rfdetr_architecture(arch_name: str, config: dict) -> None:
+    import rfdetr
+
+    ds_cfg = config["dataset"]
+    class_names = ds_cfg["class_names"]
+    rfdetr_cfg = config.get("frameworks", {}).get("rfdetr", {})
+
+    output_dir = Path(config.get("output_dir", "results/detection")) / arch_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    dataset_dir = rfdetr_cfg.get("dataset_dir", "data/combined/detection_coco")
+
+    run_name = f"{ds_cfg['name']}_{arch_name}"
+    with mlflow_utils.start_run(
+        run_name=run_name,
+        tags={
+            "task": "detection", "architecture": arch_name,
+            "dataset": ds_cfg["name"], "framework": "rfdetr",
+        },
+    ):
+        run_config = copy.deepcopy(config)
+        run_config["architecture"] = arch_name
+        run_config["framework"] = "rfdetr"
+        mlflow_utils.log_config_params(run_config)
+
+        model_cls_name = RFDETR_MODEL_CLASSES[arch_name]
+        model = getattr(rfdetr, model_cls_name)()
+
+        model.train(
+            dataset_dir=str(dataset_dir),
+            dataset_file="roboflow",  # our train/valid/test + _annotations.coco.json layout, not COCO2017's
+            output_dir=str(output_dir),
+            epochs=config.get("epochs", 100),
+            batch_size=rfdetr_cfg.get("batch_size", 4),
+            grad_accum_steps=rfdetr_cfg.get("grad_accum_steps", 4),
+            lr=rfdetr_cfg.get("lr", 1e-4),
+            class_names=class_names,
+            run_test=True,
+            early_stopping=True,
+            early_stopping_patience=rfdetr_cfg.get("early_stopping_patience", 10),
+            seed=config.get("seed", 42),
+            tensorboard=False,
+            wandb=False,
+            mlflow=False,  # our own MLflow run above keeps the metric schema consistent across frameworks
+            project=config["experiment_name"],
+            run=run_name,
+        )
+
+        scalars: dict[str, float] = {}
+        metrics_csv = output_dir / "metrics.csv"
+        if metrics_csv.exists():
+            import pandas as pd
+
+            df = pd.read_csv(metrics_csv)
+            for _, row in df.iterrows():
+                step = int(row["epoch"]) if "epoch" in row and not pd.isna(row.get("epoch")) else None
+                metric_row = {
+                    k: v for k, v in row.items()
+                    if k not in ("epoch", "step") and isinstance(v, (int, float)) and not pd.isna(v)
+                }
+                if metric_row:
+                    mlflow_utils.log_metrics(metric_row, step=step)
+
+            test_metric_keys = {
+                "test/mAP_50_95": "test_mAP_50_95", "test/mAP_50": "test_mAP_50",
+                "test/mAP_75": "test_mAP_75", "test/mAR": "test_mAR",
+                "test/F1": "test_F1", "test/precision": "test_precision", "test/recall": "test_recall",
+            }
+            for col, out_key in test_metric_keys.items():
+                if col in df.columns:
+                    series = df[col].dropna()
+                    if len(series):
+                        scalars[out_key] = float(series.iloc[-1])
+
+            for cname in class_names:
+                col = f"test/AP/{cname}"
+                if col in df.columns:
+                    series = df[col].dropna()
+                    if len(series):
+                        safe = cname.replace(" ", "_")
+                        scalars[f"test_AP50_95_per_class.{safe}"] = float(series.iloc[-1])
+
+            if scalars:
+                mlflow_utils.log_metrics(scalars)
+
+        best_ckpt = output_dir / "checkpoint_best_total.pth"
+        if best_ckpt.exists():
+            mlflow_utils.log_pt_checkpoint(best_ckpt, artifact_path="checkpoints")
+
+        print(f"[{arch_name}] done. test mAP50-95={scalars.get('test_mAP_50_95', float('nan')):.4f}")
 
 
 def train_one_epoch_torchvision(model, loader, optimizer, device) -> float:
@@ -318,7 +416,7 @@ def main():
     parser = argparse.ArgumentParser(description="Object detection training (Task B)")
     parser.add_argument("--config", required=True, help="Path to config yaml")
     parser.add_argument(
-        "--framework", choices=["ultralytics", "torchvision", "all"], default="all",
+        "--framework", choices=["ultralytics", "torchvision", "rfdetr", "all"], default="all",
     )
     parser.add_argument(
         "--architectures", nargs="*", default=None,
@@ -346,6 +444,12 @@ def main():
         for arch_name in archs:
             print(f"\n=== [torchvision] Training architecture: {arch_name} ===")
             train_torchvision_architecture(arch_name, config, device)
+
+    if args.framework in ("rfdetr", "all") and "rfdetr" in frameworks_cfg:
+        archs = args.architectures or frameworks_cfg["rfdetr"].get("architectures", [])
+        for arch_name in archs:
+            print(f"\n=== [rfdetr] Training architecture: {arch_name} ===")
+            train_rfdetr_architecture(arch_name, config)
 
 
 if __name__ == "__main__":
