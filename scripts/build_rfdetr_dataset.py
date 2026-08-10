@@ -3,6 +3,10 @@ Converts a YOLO-format detection dataset (output of
 scripts/build_combined_dataset.py) into the COCO JSON format required by
 RF-DETR (package `rfdetr`).
 
+This is the Roboflow-style COCO layout (train/valid/test folders, each with
+its own _annotations.coco.json) — pass dataset_file="roboflow" to
+RFDETR*.train(), not "coco" (that value means the COCO2017 layout instead).
+
 RF-DETR expects:
     <out_dir>/train/_annotations.coco.json + images
     <out_dir>/valid/_annotations.coco.json + images
