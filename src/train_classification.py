@@ -185,6 +185,10 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
                     print(f"[{arch_name}] QAT activated at epoch {epoch} (backend={qat_backend})")
                 except Exception as exc:
                     qat_give_up = True
+                    # prepare_qat_model() moves the model to CPU in-place before FX-tracing
+                    # it; on a failed trace that move already happened, so the model must be
+                    # brought back to the training device before fp32 training resumes.
+                    model = model.to(device)
                     print(f"[{arch_name}] QAT preparation failed ({exc}); continuing in fp32")
 
             if qat_active:
