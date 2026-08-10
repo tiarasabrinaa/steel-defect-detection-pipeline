@@ -1,9 +1,4 @@
-"""Single source of truth for label harmonization across datasets.
-
-Defines per-dataset class lists, the 20 canonical classes (union), the
-mapping from each dataset's original labels to canonical labels, and helper
-functions used by the data loader, preparation scripts, and training code.
-"""
+"""Single source of truth for label harmonization across datasets."""
 
 from __future__ import annotations
 
@@ -146,7 +141,6 @@ def canonical_id_for(dataset_name: str, original_label: str) -> int:
 
 
 def build_label_remap(dataset_name: str) -> dict[int, int]:
-    """Return {local_class_id: canonical_class_id} for a dataset."""
     classes = get_dataset_classes(dataset_name)
     return {
         local_id: canonical_id_for(dataset_name, label)
@@ -155,8 +149,6 @@ def build_label_remap(dataset_name: str) -> dict[int, int]:
 
 
 def combined_class_names_for(dataset_names: list[str]) -> list[str]:
-    """Canonical classes actually present in a given combination of datasets,
-    ordered consistently with CANONICAL_CLASSES."""
     used = set()
     for ds in dataset_names:
         used.update(DATASET_TO_CANONICAL[ds].values())

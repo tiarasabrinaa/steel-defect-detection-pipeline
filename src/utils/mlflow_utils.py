@@ -1,17 +1,14 @@
 """
-Wrapper tipis di atas MLflow supaya semua training script (classification
-maupun detection) logging dengan cara yang konsisten, dan supaya kredensial
-Databricks cuma diatur di SATU tempat (environment variables / .env),
-tidak pernah di-hardcode di kode atau config yaml.
+Thin wrapper around MLflow so all training scripts log consistently, and so
+Databricks credentials live only in environment variables, never hardcoded.
 
-Setup Databricks (lihat juga README.md bagian "MLflow + Databricks"):
+Databricks setup (see README.md, "MLflow + Databricks"):
     export MLFLOW_TRACKING_URI=databricks
     export DATABRICKS_HOST=https://<your-workspace>.cloud.databricks.com
     export DATABRICKS_TOKEN=<personal access token>
     export MLFLOW_EXPERIMENT_BASE_PATH=/Users/<email>/steel-defect-detection
 
-Kalau env var di atas tidak diset, otomatis fallback ke MLflow lokal
-(./mlruns) supaya pipeline tetap bisa dites tanpa akun Databricks.
+If these are unset, MLflow falls back to local tracking (./mlruns).
 """
 
 from __future__ import annotations
@@ -27,21 +24,16 @@ import matplotlib.pyplot as plt
 import mlflow
 from dotenv import load_dotenv
 
-load_dotenv()  # baca .env kalau ada, tidak error kalau tidak ada
+load_dotenv()
 
-_MAX_PARAMS_PER_BATCH = 100  # batas API mlflow.log_params sekali panggil
+_MAX_PARAMS_PER_BATCH = 100  # mlflow.log_params limit per call
 
 
 def init_mlflow(experiment_name: str) -> str:
-    """
-    Konfigurasi tracking URI + experiment. Return experiment_name final
-    (sudah termasuk base path Databricks kalau dipakai) untuk logging.
-    """
     tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "").strip()
 
     if tracking_uri:
         mlflow.set_tracking_uri(tracking_uri)
-    # kalau kosong, biarkan default mlflow (./mlruns lokal)
 
     base_path = os.environ.get("MLFLOW_EXPERIMENT_BASE_PATH", "").rstrip("/")
     if tracking_uri == "databricks" and base_path:
@@ -73,19 +65,15 @@ def _flatten(d: dict[str, Any], parent_key: str = "") -> dict[str, Any]:
 
 
 def log_config_params(config: dict[str, Any]) -> None:
-    """Log semua hyperparameter dari config yaml (flattened) ke MLflow."""
     flat = _flatten(config)
     keys = list(flat.keys())
     for i in range(0, len(keys), _MAX_PARAMS_PER_BATCH):
         batch_keys = keys[i : i + _MAX_PARAMS_PER_BATCH]
-        # mlflow membatasi panjang value param ke 6000 char, dan akan error
-        # kalau None -> cast ke str semua supaya aman.
         batch = {k: str(flat[k]) for k in batch_keys}
         mlflow.log_params(batch)
 
 
 def log_metrics(metrics: dict[str, float], step: int | None = None) -> None:
-    """Log dict metric scalar (skip None / non-numeric secara aman)."""
     clean = {}
     for k, v in metrics.items():
         if v is None:
@@ -104,7 +92,6 @@ def log_confusion_matrix(
     artifact_file: str = "confusion_matrix.png",
     normalize: bool = True,
 ) -> None:
-    """Log confusion matrix sebagai figure artifact (PNG) di MLflow."""
     import numpy as np
 
     cm = np.asarray(cm, dtype=float)
@@ -154,10 +141,8 @@ def log_dict_artifact(data: dict[str, Any], artifact_file: str) -> None:
 
 
 def log_pt_checkpoint(local_path: str | Path, artifact_path: str = "checkpoints") -> None:
-    """Upload file .pt (best checkpoint) sebagai artifact MLflow."""
     mlflow.log_artifact(str(local_path), artifact_path=artifact_path)
 
 
 def log_artifact_file(local_path: str | Path, artifact_path: str) -> None:
-    """Upload file apapun (plot, csv, dll) sebagai artifact MLflow."""
     mlflow.log_artifact(str(local_path), artifact_path=artifact_path)

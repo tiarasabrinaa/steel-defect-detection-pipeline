@@ -1,7 +1,7 @@
 """
-Converter Pascal VOC XML (dipakai GC10-DET & NEU-DET) -> format label YOLO.
+Converts Pascal VOC XML annotations (GC10-DET, NEU-DET) to YOLO label format.
 
-VOC XML dianggap punya struktur standar:
+Expected VOC XML structure:
     <annotation>
       <size><width>W</width><height>H</height></size>
       <object>
@@ -11,8 +11,8 @@ VOC XML dianggap punya struktur standar:
       ...
     </annotation>
 
-Dipakai sebagai library (dipanggil dari scripts/prepare_data.py) maupun CLI
-standalone untuk debugging satu file:
+Used as a library (called from scripts/prepare_data.py) and as a standalone
+CLI for debugging a single file:
     python scripts/voc_to_yolo.py --xml path/to/file.xml --classes crazing inclusion ...
 """
 
@@ -47,24 +47,21 @@ def voc_to_yolo_lines(
     class_to_id: dict[str, int],
     name_remap: dict[str, str] | None = None,
 ) -> tuple[list[str], list[tuple]]:
-    """Return (yolo_lines, raw_objects). Object dengan nama kelas yang tidak
-    dikenal di `class_to_id` di-skip (dengan warning) alih-alih error, supaya
-    satu XML yang typo tidak menggagalkan seluruh konversi dataset.
+    """Return (yolo_lines, raw_objects). Objects with a class name not
+    present in `class_to_id` are skipped with a warning rather than raising,
+    so a single malformed XML does not fail the whole conversion.
 
-    `name_remap` (opsional): terjemahkan isi tag <name> ke nama kelas
-    kanonik SEBELUM di-lookup ke `class_to_id` - dipakai buat GC10-DET,
-    yang <name> XML-nya pinyin+angka (misal "3_yueyawan"), bukan Inggris.
-    PENTING: remap ini per-OBJECT, bukan per-file - satu gambar GC10 bisa
-    punya lebih dari satu jenis defect berbeda dalam 1 XML (defect utama
-    sesuai folder + defect sekunder kelas lain), jadi tiap object HARUS
-    dibaca <name>-nya masing-masing, tidak boleh dipukul rata 1 kelas per file
-    (lihat commit fix bug ini utk detail kasus nyata yang ketauan)."""
+    `name_remap` (optional): translates the <name> tag to a canonical class
+    name before the `class_to_id` lookup - used for GC10-DET, whose XML
+    <name> values are pinyin (e.g. "3_yueyawan") rather than English. This
+    is applied per object, not per file: a single GC10 image can contain
+    more than one defect type."""
     width, height, objects = parse_voc_xml(xml_path)
     lines = []
     for name, xmin, ymin, xmax, ymax in objects:
         canonical_name = name_remap.get(name, name) if name_remap else name
         if canonical_name not in class_to_id:
-            print(f"WARNING: label '{name}' (remap: '{canonical_name}') di {xml_path} tidak ada di class list, di-skip")
+            print(f"WARNING: label '{name}' (remapped: '{canonical_name}') in {xml_path} is not in the class list, skipping")
             continue
         cls_id = class_to_id[canonical_name]
         xc = (xmin + xmax) / 2.0 / width
@@ -76,14 +73,14 @@ def voc_to_yolo_lines(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Debug: convert 1 VOC XML -> YOLO lines")
+    parser = argparse.ArgumentParser(description="Debug: convert one VOC XML file to YOLO lines")
     parser.add_argument("--xml", required=True)
     parser.add_argument("--classes", nargs="+", required=True)
     args = parser.parse_args()
 
     class_to_id = {c: i for i, c in enumerate(args.classes)}
     lines, objects = voc_to_yolo_lines(args.xml, class_to_id)
-    print(f"Ditemukan {len(objects)} object, {len(lines)} berhasil dikonversi:")
+    print(f"Found {len(objects)} objects, {len(lines)} converted successfully:")
     for line in lines:
         print(line)
 

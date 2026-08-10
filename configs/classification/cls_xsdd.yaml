@@ -1,4 +1,4 @@
-# Skenario A3 (README.md bagian 3) - X-SDD saja, 7 kelas.
+# Scenario A3 (README.md section 3) - X-SDD only, 7 classes.
 experiment_name: "steel-defect/classification/xsdd"
 
 dataset:
@@ -29,23 +29,16 @@ scheduler:
   name: cosine
 
 loss:
-  weighted: true         # X-SDD 1.360 gambar / 7 kelas -> cek distribusi, kemungkinan tidak rata
+  weighted: true         # X-SDD: 1,360 images / 7 classes, distribution is uneven
   label_smoothing: 0.1
 
-# X-SDD rata-rata ~194 gambar/kelas (lebih sedikit dari NEU-CLS yang 300/
-# kelas) DAN kelasnya tidak rata (makanya loss.weighted di atas juga true) -
-# kombinasi dataset paling kecil + paling imbalance di 3 dataset ini, jadi
-# dropout head dinaikkan ke 0.4 (vs 0.3 di NEU) sebagai regularizer ekstra.
+# Smallest, most imbalanced dataset of the three - higher dropout than NEU.
 head:
   type: mlp
   hidden_dim: 256
   dropout: 0.4
   use_batchnorm: true
 
-# Sama seperti cls_gc10.yaml. X-SDD dataset paling kecil di 3 dataset ini -
-# fase fp32 warm-up (35 epoch) penting supaya bobot cukup stabil sebelum
-# ditambah noise kuantisasi, biar kombinasi "data sedikit + noise int8"
-# nggak bikin training kolaps.
 quantization:
   enabled: true
   backend: qnnpack

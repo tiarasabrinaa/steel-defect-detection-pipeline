@@ -1,8 +1,4 @@
-# Skenario B4 (README.md bagian 3) - Gabungan GC10 + NEU-DET (X-SDD di-drop
-# dari detection karena tidak punya bbox publik, lihat README.md bagian 1
-# & 4). Union kelasnya 15 (BUKAN 16 seperti perkiraan awal di draft plan --
-# lihat src/class_mapping.py::combined_class_names_for(["gc10","neu_det"])
-# untuk angka pastinya), karena "inclusion" GC10 & NEU digabung jadi satu.
+# Scenario B4 - GC10 + NEU-DET combined, 15 classes (X-SDD dropped, no bounding boxes).
 experiment_name: "steel-defect/detection/combined"
 
 dataset:
@@ -11,7 +7,7 @@ dataset:
   num_classes: 15
   class_names:
     - inclusion                     # merged: GC10 + NEU-DET
-    - scratches                     # dari NEU-DET saja (X-SDD di-drop dari task detection)
+    - scratches                     # NEU-DET only (X-SDD dropped from detection)
     - crazing
     - patches
     - pitted_surface

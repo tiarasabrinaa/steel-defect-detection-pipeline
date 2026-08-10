@@ -1,21 +1,7 @@
-"""
-Training pipeline object detection (Task B, README.md bagian 3).
+"""Object detection training pipeline. --framework selects ultralytics
+(YOLOv8/YOLO11/RT-DETR) or torchvision (Faster R-CNN/RetinaNet).
 
-Dua jalur/framework berbeda, dipilih lewat `--framework`:
-
-  ultralytics  -> YOLOv8 / YOLO11 / RT-DETR (fine-tune dari COCO weights),
-                  training loop & mAP dihitung oleh package `ultralytics`,
-                  kita ambil hasilnya lalu log manual ke MLflow.
-  torchvision  -> Faster R-CNN (two-stage) / RetinaNet (one-stage),
-                  training loop ditulis manual + mAP dihitung pakai
-                  torchmetrics (MeanAveragePrecision).
-
-Kedua jalur logging ke MLflow dengan skema metric yang konsisten:
-mAP_50, mAP_50_95, mAP_75, per-class AP, plus best.pt checkpoint.
-
-Jalankan (dari root project):
-    python -m src.train_detection --config configs/detection/det_gc10.yaml --framework ultralytics
-    python -m src.train_detection --config configs/detection/det_gc10.yaml --framework torchvision
+Usage:
     python -m src.train_detection --config configs/detection/det_gc10.yaml --framework all
 """
 
@@ -37,22 +23,15 @@ from src.utils import mlflow_utils
 from src.utils.metrics_detection import build_map_metric, compute_detection_metrics, strip_background
 from src.utils.seed import get_device, set_seed
 
-# Matikan integrasi MLflow bawaan ultralytics: kita mau logging manual yang
-# konsisten dengan jalur torchvision, bukan dua run terpisah yang bentrok.
 from ultralytics import RTDETR, YOLO
 from ultralytics import settings as ultralytics_settings
 
-ultralytics_settings.update({"mlflow": False})
+ultralytics_settings.update({"mlflow": False})  # logging is handled manually below
 
 
 def load_config(path: str) -> dict:
     with open(path) as f:
         return yaml.safe_load(f)
-
-
-# ---------------------------------------------------------------------------
-# Jalur Ultralytics: YOLOv8 / YOLO11 / RT-DETR
-# ---------------------------------------------------------------------------
 
 
 def train_ultralytics_architecture(arch_name: str, config: dict) -> None:
@@ -78,7 +57,7 @@ def train_ultralytics_architecture(arch_name: str, config: dict) -> None:
         mlflow_utils.log_config_params(run_config)
 
         model_cls = RTDETR if arch_name.startswith("rtdetr") else YOLO
-        model = model_cls(f"{arch_name}.pt")  # pretrained COCO weights, auto-download
+        model = model_cls(f"{arch_name}.pt")
 
         train_kwargs = dict(
             data=str(data_yaml_path),
@@ -100,7 +79,6 @@ def train_ultralytics_architecture(arch_name: str, config: dict) -> None:
         model.train(**train_kwargs)
         save_dir = Path(model.trainer.save_dir)
 
-        # Evaluasi final di test split
         test_metrics = model.val(data=str(data_yaml_path), split="test", imgsz=config.get("img_size", 640))
         scalars = {
             "test_mAP_50": float(test_metrics.box.map50),
@@ -117,7 +95,6 @@ def train_ultralytics_architecture(arch_name: str, config: dict) -> None:
                     scalars[f"test_AP50_95_per_class.{safe}"] = float(ap_per_class[i])
         mlflow_utils.log_metrics(scalars)
 
-        # Kurva training per-epoch dari results.csv -> log_metrics per step
         results_csv = save_dir / "results.csv"
         if results_csv.exists():
             import pandas as pd
@@ -132,8 +109,6 @@ def train_ultralytics_architecture(arch_name: str, config: dict) -> None:
                 }
                 mlflow_utils.log_metrics(metric_row, step=step)
 
-        # Artifacts: best.pt + plot bawaan ultralytics (PR curve, confusion
-        # matrix, contoh prediksi vs GT untuk qualitative check)
         best_pt = save_dir / "weights" / "best.pt"
         if best_pt.exists():
             mlflow_utils.log_pt_checkpoint(best_pt, artifact_path="checkpoints")
@@ -147,12 +122,7 @@ def train_ultralytics_architecture(arch_name: str, config: dict) -> None:
             if fpath.exists():
                 mlflow_utils.log_artifact_file(fpath, artifact_path="plots")
 
-        print(f"[{arch_name}] selesai. test mAP50-95={scalars['test_mAP_50_95']:.4f}")
-
-
-# ---------------------------------------------------------------------------
-# Jalur torchvision: Faster R-CNN / RetinaNet
-# ---------------------------------------------------------------------------
+        print(f"[{arch_name}] done. test mAP50-95={scalars['test_mAP_50_95']:.4f}")
 
 
 def train_one_epoch_torchvision(model, loader, optimizer, device) -> float:
@@ -202,7 +172,7 @@ def evaluate_torchvision(model, loader, device, class_names: list[str]) -> dict:
 def save_qualitative_predictions(
     model, dataset, device, class_names: list[str], out_dir: Path, n: int = 6, score_thresh: float = 0.5
 ) -> Path | None:
-    """Visualisasi prediksi vs ground truth untuk beberapa sample test (README.md bagian 5)."""
+    """Render predictions vs ground truth for a handful of test samples."""
     model.eval()
     out_dir.mkdir(parents=True, exist_ok=True)
     n = min(n, len(dataset))
@@ -341,24 +311,24 @@ def train_torchvision_architecture(arch_name: str, config: dict, device: torch.d
 
         mlflow.pytorch.log_model(model, artifact_path="model")
 
-        print(f"[{arch_name}] selesai. best val_mAP50-95={best_score:.4f}")
+        print(f"[{arch_name}] done. best val_mAP50-95={best_score:.4f}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Training object detection (Task B)")
-    parser.add_argument("--config", required=True, help="Path ke config yaml")
+    parser = argparse.ArgumentParser(description="Object detection training (Task B)")
+    parser.add_argument("--config", required=True, help="Path to config yaml")
     parser.add_argument(
         "--framework", choices=["ultralytics", "torchvision", "all"], default="all",
     )
     parser.add_argument(
         "--architectures", nargs="*", default=None,
-        help="Override daftar arsitektur dari config (opsional)",
+        help="Override the architecture list from the config (optional)",
     )
     args = parser.parse_args()
 
     config = load_config(args.config)
     set_seed(config.get("seed", 42))
-    device = get_device()  # CUDA > MPS (Apple Silicon) > CPU - lihat catatan di src/utils/seed.py
+    device = get_device()
     print(f"Device: {device}")
 
     mlflow_utils.init_mlflow(config["experiment_name"])
@@ -368,13 +338,13 @@ def main():
     if args.framework in ("ultralytics", "all") and "ultralytics" in frameworks_cfg:
         archs = args.architectures or frameworks_cfg["ultralytics"].get("architectures", [])
         for arch_name in archs:
-            print(f"\n=== [ultralytics] Training arsitektur: {arch_name} ===")
+            print(f"\n=== [ultralytics] Training architecture: {arch_name} ===")
             train_ultralytics_architecture(arch_name, config)
 
     if args.framework in ("torchvision", "all") and "torchvision" in frameworks_cfg:
         archs = args.architectures or frameworks_cfg["torchvision"].get("architectures", [])
         for arch_name in archs:
-            print(f"\n=== [torchvision] Training arsitektur: {arch_name} ===")
+            print(f"\n=== [torchvision] Training architecture: {arch_name} ===")
             train_torchvision_architecture(arch_name, config, device)
 
 

@@ -1,28 +1,27 @@
 """
-Bangun dataset gabungan (skenario A4/B4, README.md bagian 2 & 3) dengan
-label sudah diremap ke skema kanonik di src/class_mapping.py.
+Builds a combined dataset (scenarios A4/B4, README.md sections 2-3) with
+labels remapped to the canonical scheme in src/class_mapping.py.
 
 Classification:
     python scripts/build_combined_dataset.py --task classification \
         --sources gc10=data/processed/gc10_cls neu_cls=data/processed/neu_cls xsdd=data/processed/xsdd \
         --out_dir data/combined/classification
 
-Detection (X-SDD di-drop karena tidak punya bbox, lihat README.md bagian 1 & 4):
+Detection (X-SDD is dropped, no bounding boxes available - README.md sections 1 and 4):
     python scripts/build_combined_dataset.py --task detection \
         --sources gc10=data/processed/gc10_det neu_det=data/processed/neu_det \
         --out_dir data/combined/detection
 
-Detection + negative samples (README v3 bagian 2 & 7 - fold gambar
-defect-free Severstal sebagai anti false-positive, ~10-15% dari jumlah
-gambar positive, JANGAN lebih supaya detector gak jadi terlalu konservatif):
+Detection with negative samples (fold in defect-free Severstal images as
+anti-false-positive examples, capped at ~10-15% of positive images so the
+detector doesn't become overly conservative - README.md sections 2 and 7):
     python scripts/build_combined_dataset.py --task detection \
         --sources gc10=data/processed/gc10_det neu_det=data/processed/neu_det \
         --out_dir data/combined/detection \
         --negatives_dir data/raw/severstal_clean --negative_ratio 0.12
 
-File gambar diberi prefix `<dataset>__` supaya tidak ada collision nama
-antar dataset, dan tetap bisa ditelusuri asal datasetnya untuk analisis
-cross-dataset generalization (README.md bagian 7, poin 8).
+Image filenames are prefixed with `<dataset>__` to avoid collisions and to
+keep the source dataset identifiable for cross-dataset analysis.
 """
 
 from __future__ import annotations
@@ -85,7 +84,7 @@ def build_combined_classification(sources: dict[str, str], out_dir: str | Path) 
                     if split == "train":
                         counts[canonical_name] += 1
 
-    print("Distribusi jumlah sampel train per kelas kanonik (cek imbalance sebelum training):")
+    print("Train sample count per canonical class (check imbalance before training):")
     for cname, n in counts.items():
         print(f"  {cname:35s} {n:5d}")
 
@@ -138,7 +137,7 @@ def build_combined_detection(sources: dict[str, str], out_dir: str | Path) -> No
                 dest_label_name = f"{ds_name}__{img_path.stem}.txt"
                 (out_dir / "labels" / split / dest_label_name).write_text("\n".join(new_lines))
 
-    print("Distribusi jumlah bounding box train per kelas kanonik (cek imbalance sebelum training):")
+    print("Train bounding box count per canonical class (check imbalance before training):")
     for cname, n in box_counts.items():
         print(f"  {cname:35s} {n:5d}")
 
@@ -164,16 +163,14 @@ def add_negative_samples(
     seed: int = 42,
 ) -> None:
     """
-    Fold gambar negative/background (defect-free, misal subset Severstal)
-    ke dataset detection sebagai anti false-positive sample (README v3
-    bagian 2 & 7). Ditulis sebagai label file KOSONG (0 object) -
-    YoloDetectionDataset (src/data_loader.py) sudah otomatis treat file
-    label yang nggak ada/kosong sebagai "0 box", jadi loader nggak perlu diubah.
+    Folds negative/background images (defect-free, e.g. Severstal) into a
+    detection dataset as anti-false-positive samples. Written as empty
+    label files (0 objects); YoloDetectionDataset already treats a missing
+    or empty label file as "0 boxes", so no loader changes are needed.
 
-    `ratio` dihitung terhadap jumlah gambar POSITIVE yang sudah ada di
-    out_dir. Sengaja dibikin kecil (README rekomendasi ~10-15%) - kalau
-    kebanyakan negative, detector beresiko jadi terlalu konservatif dan
-    malah nurunin recall (README bagian 6, "Error propagation").
+    `ratio` is computed against the number of positive images already in
+    out_dir. Kept small (~10-15%) since too many negatives can make a
+    detector overly conservative and reduce recall.
     """
     out_dir = Path(out_dir)
     negatives_dir = Path(negatives_dir)
@@ -186,8 +183,8 @@ def add_negative_samples(
     all_negatives = sorted(p for p in negatives_dir.rglob("*") if p.suffix.lower() in IMG_EXTENSIONS)
     if len(all_negatives) < target_negative:
         print(
-            f"WARNING: negative source cuma {len(all_negatives)} gambar, kurang dari target "
-            f"{target_negative} ({ratio:.0%} dari {total_positive} positive). Pakai semua yang ada."
+            f"WARNING: only {len(all_negatives)} negative images available, fewer than the target "
+            f"{target_negative} ({ratio:.0%} of {total_positive} positives). Using all of them."
         )
         target_negative = len(all_negatives)
 
@@ -204,24 +201,24 @@ def add_negative_samples(
             (label_out / f"severstal_neg__{img_path.stem}.txt").write_text("")
         added[split_name] = len(files)
 
-    print(f"Negative samples ditambahkan ({ratio:.0%} dari {total_positive} positive): {added}")
+    print(f"Negative samples added ({ratio:.0%} of {total_positive} positives): {added}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Bangun dataset gabungan (union label kanonik)")
+    parser = argparse.ArgumentParser(description="Build a combined dataset with canonical labels")
     parser.add_argument("--task", required=True, choices=["classification", "detection"])
     parser.add_argument(
         "--sources", nargs="+", required=True,
-        help="Pasangan dataset_name=path_ke_processed, contoh: gc10=data/processed/gc10_cls",
+        help="dataset_name=path_to_processed pairs, e.g. gc10=data/processed/gc10_cls",
     )
     parser.add_argument("--out_dir", required=True)
     parser.add_argument(
         "--negatives_dir", default=None,
-        help="(detection only) folder gambar defect-free buat anti false-positive, misal data/raw/severstal_clean",
+        help="(detection only) folder of defect-free images for anti-false-positive samples",
     )
     parser.add_argument(
         "--negative_ratio", type=float, default=0.12,
-        help="Proporsi negative terhadap jumlah gambar positive (default 0.12 = 12%%)",
+        help="Ratio of negatives to positive images (default 0.12 = 12%%)",
     )
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
@@ -235,7 +232,7 @@ def main():
         if args.negatives_dir:
             add_negative_samples(args.negatives_dir, args.out_dir, args.negative_ratio, seed=args.seed)
 
-    print(f"\nSelesai. Dataset gabungan tersimpan di {args.out_dir}")
+    print(f"\nDone. Combined dataset saved to {args.out_dir}")
 
 
 if __name__ == "__main__":

@@ -1,36 +1,6 @@
-"""
-Builder untuk model classification berbasis arsitektur pretrained
-(README.md bagian 3 - Task A):
-    resnet50, tf_efficientnetv2_s, convnext_tiny, swin_tiny_patch4_window7_224,
-    mobilenetv3_large_100
-
-Semua backbone lewat `timm` supaya satu API konsisten untuk semua arsitektur
-(ImageNet pretrained weights). Classifier HEAD di atas backbone bisa dipilih
-lewat `head_cfg` (dari config yaml, key `head:`):
-
-  head:
-    type: linear      # default timm: 1 Linear(in_features -> num_classes)
-  # atau
-  head:
-    type: mlp
-    hidden_dim: 512
-    dropout: 0.3
-    use_batchnorm: true
-
-Kenapa perlu opsi "mlp" (bukan cuma linear standar)?
-Dataset di project ini KECIL dibanding benchmark ImageNet biasa dipakai buat
-transfer learning (NEU-CLS: 300 gambar/kelas, X-SDD: ~194 gambar/kelas rata2,
-combined 20-kelas: imbalance parah karena kelas hasil merge - Inclusion,
-Scratches - punya sampel 2-3x lebih banyak dari kelas unik per-dataset seperti
-Waist Folding). Satu Linear layer langsung di atas pooled feature berdimensi
-tinggi (2048 utk resnet50, 1280 utk convnext_tiny/effnetv2-s) gampang overfit
-di regime data sekecil ini. Head "mlp" (bottleneck Linear -> BatchNorm -> GELU
--> Dropout -> Linear) dipakai khusus di skenario dataset kecil/imbalance (NEU,
-X-SDD, combined) sebagai regularizer murah; skenario GC10 (dataset relatif
-besar & balanced, ~2300 gambar utk 10 kelas) tetap pakai "linear" karena tidak
-butuh proteksi ekstra itu. Lihat comment di tiap configs/classification/*.yaml
-untuk alasan spesifik per skenario.
-"""
+"""Classification model builder. Backbones load through `timm`; the
+classifier head is selected via `head_cfg` (config key `head:`, type
+"linear" or "mlp")."""
 
 from __future__ import annotations
 
@@ -40,15 +10,14 @@ import timm
 import torch
 import torch.nn as nn
 
-# Nama arsitektur "ramah manusia" (dipakai di config yaml) -> nama model timm.
 ARCHITECTURE_ALIASES = {
     "resnet50": "resnet50",
-    "resnet18": "resnet18",  # lebih ringan dari resnet50, kandidat stage-1 gate classifier (cepat)
+    "resnet18": "resnet18",
     "efficientnetv2_s": "tf_efficientnetv2_s",
     "convnext_tiny": "convnext_tiny",
     "swin_tiny": "swin_tiny_patch4_window7_224",
     "mobilenetv3": "mobilenetv3_large_100",
-    "mobilenetv3_small": "mobilenetv3_small_100",  # paling ringan, kandidat utama stage-1 gate classifier
+    "mobilenetv3_small": "mobilenetv3_small_100",
 }
 
 
@@ -57,11 +26,6 @@ def resolve_timm_name(arch_name: str) -> str:
 
 
 class MLPHead(nn.Module):
-    """Bottleneck MLP head: Linear -> (BatchNorm) -> GELU -> Dropout -> Linear.
-
-    Dipakai sebagai pengganti Linear head standar saat dataset kecil / kelas
-    imbalance (lihat docstring modul ini)."""
-
     def __init__(
         self,
         in_features: int,
@@ -84,8 +48,6 @@ class MLPHead(nn.Module):
 
 
 class ClassifierWithHead(nn.Module):
-    """Backbone (pooled feature extractor, timm num_classes=0) + custom head."""
-
     def __init__(self, backbone: nn.Module, head: nn.Module):
         super().__init__()
         self.backbone = backbone
@@ -107,12 +69,9 @@ def build_model(
     head_type = head_cfg.get("type", "linear")
 
     if head_type == "linear":
-        # timm pasang Linear(in_features, num_classes) standar sebagai head.
         return timm.create_model(timm_name, pretrained=pretrained, num_classes=num_classes)
 
     if head_type == "mlp":
-        # num_classes=0 -> timm cuma balikin pooled feature vector (backbone
-        # tanpa classifier head), supaya head custom kita yang pasang di atasnya.
         backbone = timm.create_model(timm_name, pretrained=pretrained, num_classes=0)
         in_features = backbone.num_features
         head = MLPHead(
@@ -124,4 +83,4 @@ def build_model(
         )
         return ClassifierWithHead(backbone, head)
 
-    raise ValueError(f"head.type '{head_type}' tidak dikenal. Pilihan: linear, mlp")
+    raise ValueError(f"Unknown head.type '{head_type}'. Options: linear, mlp")

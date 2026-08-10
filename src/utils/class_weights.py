@@ -1,5 +1,4 @@
-"""Class-imbalance helpers (wajib dipakai di skenario gabungan A4/B4, lihat
-README.md bagian 4 - Trade-off)."""
+"""Class-imbalance helpers."""
 
 from __future__ import annotations
 
@@ -14,11 +13,8 @@ def compute_class_counts(labels: list[int], num_classes: int) -> list[int]:
 
 
 def compute_class_weights(labels: list[int], num_classes: int) -> torch.Tensor:
-    """
-    Inverse-frequency class weight, dinormalisasi supaya rata-rata weight = 1.
-    Dipakai sebagai `weight=` di CrossEntropyLoss (classification) atau untuk
-    weighted sampling.
-    """
+    """Inverse-frequency class weights, normalized to a mean of 1. Used as
+    `weight=` in CrossEntropyLoss or for weighted sampling."""
     counts = compute_class_counts(labels, num_classes)
     total = sum(counts)
     weights = [
@@ -33,6 +29,6 @@ def compute_class_weights(labels: list[int], num_classes: int) -> torch.Tensor:
 
 
 def compute_sample_weights(labels: list[int], num_classes: int) -> torch.Tensor:
-    """Per-sample weight (dipakai oleh WeightedRandomSampler untuk oversampling)."""
+    """Per-sample weight, for use with WeightedRandomSampler."""
     class_weights = compute_class_weights(labels, num_classes)
     return torch.tensor([class_weights[label] for label in labels], dtype=torch.double)

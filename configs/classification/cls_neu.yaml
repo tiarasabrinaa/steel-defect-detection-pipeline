@@ -1,4 +1,4 @@
-# Skenario A2 (README.md bagian 3) - NEU-CLS saja, 6 kelas.
+# Scenario A2 (README.md section 3) - NEU-CLS only, 6 classes.
 experiment_name: "steel-defect/classification/neu_cls"
 
 dataset:
@@ -28,23 +28,16 @@ scheduler:
   name: cosine
 
 loss:
-  weighted: false        # NEU-CLS balanced (300 gambar/kelas by design)
+  weighted: false        # NEU-CLS is balanced by design (300 images/class)
   label_smoothing: 0.1
 
-# NEU-CLS cuma 300 gambar/kelas (jauh lebih kecil dari GC10) - Linear head
-# langsung di atas pooled feature 2048-dim (resnet50) gampang overfit di
-# regime data sekecil ini. Bottleneck MLP (512-dim) + dropout 0.3 jadi
-# regularizer murah: paksa model belajar representasi defect yang lebih
-# ringkas sebelum keputusan kelas, bukan menghafal 300 sampel/kelas.
+# Small dataset (300 images/class) - MLP head as a regularizer.
 head:
   type: mlp
   hidden_dim: 256
   dropout: 0.3
   use_batchnorm: true
 
-# Sama seperti cls_gc10.yaml (lihat penjelasan di sana). qat_start_epoch
-# tetap 35/50 karena epoch budget sama; dataset NEU-CLS kecil jadi observer
-# QAT butuh beberapa epoch stabil dulu sebelum di-freeze.
 quantization:
   enabled: true
   backend: qnnpack

@@ -1,25 +1,24 @@
 """
-Cari gambar defect-free dari Severstal Steel Defect Detection (Kaggle) dan
-staging ke `data/raw/severstal_clean/`, siap dipakai sebagai:
-  - kelas "Normal" di stage 1 (binary classifier) -> scripts/build_stage1_binary.py
-  - negative/background sample di stage 2 (detector) -> scripts/build_combined_dataset.py --negatives_dir
+Finds defect-free images in the Severstal Steel Defect Detection dataset
+(Kaggle) and stages them into `data/raw/severstal_clean/`, used as:
+  - the "Normal" class for stage 1 (binary classifier) -> scripts/build_stage1_binary.py
+  - negative/background samples for stage 2 (detector) -> scripts/build_combined_dataset.py --negatives_dir
 
-Severstal itu Kaggle COMPETITION dataset (bukan dataset biasa) - download
-manual butuh akun Kaggle + accept competition rules dulu di
-https://www.kaggle.com/c/severstal-steel-defect-detection/data, baru bisa
+Severstal is a Kaggle competition dataset; downloading it requires a Kaggle
+account and accepting the competition rules at
+https://www.kaggle.com/c/severstal-steel-defect-detection/data, then
 `kaggle competitions download -c severstal-steel-defect-detection`.
 
-Asumsi struktur raw SEBELUM script ini dijalankan:
+Expected raw layout before running this script:
     data/raw/severstal/train.csv
     data/raw/severstal/train_images/*.jpg
 
-train.csv ada 2 varian format yang beredar di mirror berbeda (kolom
-`ImageId_ClassId` gabungan, ATAU `ImageId`+`ClassId` terpisah) - script ini
-handle keduanya. Gambar dianggap "defect-free" kalau TIDAK ADA baris dengan
-EncodedPixels terisi untuk ImageId tersebut (atau ImageId itu nggak
-disebut sama sekali di train.csv, tergantung mirror).
+train.csv has two formats across mirrors (a combined `ImageId_ClassId`
+column, or separate `ImageId`/`ClassId` columns); this script handles both.
+An image is considered defect-free if it has no row with a non-empty
+EncodedPixels value.
 
-Contoh pemakaian:
+Example usage:
     python scripts/prepare_severstal.py \
         --raw_dir data/raw/severstal --out_dir data/raw/severstal_clean
 """
@@ -36,18 +35,19 @@ IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
 
 
 def _normalize_train_csv(df: pd.DataFrame) -> pd.DataFrame:
-    """Pastikan hasilnya punya kolom ImageId & EncodedPixels, apapun varian format aslinya."""
+    """Ensure the result has ImageId and EncodedPixels columns, regardless
+    of the source format."""
     if "ImageId_ClassId" in df.columns:
         df = df.copy()
         df["ImageId"] = df["ImageId_ClassId"].str.rsplit("_", n=1).str[0]
     elif "ImageId" not in df.columns:
         raise ValueError(
-            "train.csv tidak punya kolom 'ImageId' atau 'ImageId_ClassId' - "
-            "cek format file, mungkin mirror yang dipakai beda struktur."
+            "train.csv has neither an 'ImageId' nor an 'ImageId_ClassId' column - "
+            "check the file format, the mirror used may differ."
         )
 
     if "EncodedPixels" not in df.columns:
-        raise ValueError("train.csv tidak punya kolom 'EncodedPixels'")
+        raise ValueError("train.csv has no 'EncodedPixels' column")
 
     return df
 
@@ -57,9 +57,9 @@ def find_defect_free_images(raw_dir: str | Path) -> list[Path]:
     csv_path = raw_dir / "train.csv"
     img_dir = raw_dir / "train_images"
     if not csv_path.exists():
-        raise FileNotFoundError(f"{csv_path} tidak ditemukan")
+        raise FileNotFoundError(f"{csv_path} not found")
     if not img_dir.exists():
-        raise FileNotFoundError(f"{img_dir} tidak ditemukan")
+        raise FileNotFoundError(f"{img_dir} not found")
 
     df = _normalize_train_csv(pd.read_csv(csv_path))
 
@@ -71,15 +71,15 @@ def find_defect_free_images(raw_dir: str | Path) -> list[Path]:
     defect_free = [p for p in all_images if p.name not in has_defect]
 
     print(
-        f"Total gambar: {len(all_images)}, dengan defect: {len(all_images) - len(defect_free)}, "
+        f"Total images: {len(all_images)}, with defects: {len(all_images) - len(defect_free)}, "
         f"defect-free: {len(defect_free)}"
     )
     return defect_free
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Staging gambar defect-free dari Severstal")
-    parser.add_argument("--raw_dir", required=True, help="Folder berisi train.csv + train_images/")
+    parser = argparse.ArgumentParser(description="Stage defect-free images from Severstal")
+    parser.add_argument("--raw_dir", required=True, help="Folder containing train.csv and train_images/")
     parser.add_argument("--out_dir", required=True)
     args = parser.parse_args()
 
@@ -90,7 +90,7 @@ def main():
     for img_path in defect_free:
         shutil.copy2(img_path, out_dir / img_path.name)
 
-    print(f"Selesai. {len(defect_free)} gambar defect-free tersimpan di {out_dir}")
+    print(f"Done. {len(defect_free)} defect-free images saved to {out_dir}")
 
 
 if __name__ == "__main__":

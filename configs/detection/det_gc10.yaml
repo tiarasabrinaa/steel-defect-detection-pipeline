@@ -1,9 +1,9 @@
-# Skenario B1 (README.md bagian 3) - GC10-DET saja, 10 kelas, bbox bawaan.
+# Scenario B1 (README.md section 3) - GC10-DET only, 10 classes.
 experiment_name: "steel-defect/detection/gc10"
 
 dataset:
   name: gc10
-  root: data/processed/gc10_det   # format YOLO: images/{train,val,test}, labels/{train,val,test}
+  root: data/processed/gc10_det   # YOLO format: images/{train,val,test}, labels/{train,val,test}
   num_classes: 10
   class_names:
     - punching_hole

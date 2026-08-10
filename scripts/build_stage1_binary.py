@@ -1,19 +1,17 @@
 """
-Bangun dataset stage 1 (README.md v3, bagian 2-3): binary classifier
+Builds the stage 1 dataset (README.md section 2-3): binary classifier,
 Defect vs Normal.
 
-"Defect" = SEMUA gambar dari GC10-DET + NEU-CLS + X-SDD (ketiganya
-defect-only dataset, jadi gak perlu peduli label kelas aslinya - relevan
-di sini cuma "ada defect atau nggak"). "Normal" = subset gambar defect-free
-dari Severstal (hasil scripts/prepare_severstal.py).
+"Defect" is every image from GC10-DET, NEU-CLS, and X-SDD (all three are
+defect-only datasets, so the original class label is not used - only
+"has a defect" matters here). "Normal" is a sample of defect-free images
+from Severstal (output of scripts/prepare_severstal.py).
 
-Balance: total Defect dijadikan acuan, Normal di-sample sepadan (bukan
-pakai semua ribuan gambar Normal Severstal - README bagian 2, "Strategi
-balance"). Split train/val/test dilakukan TERPISAH per sumber (supaya
-GC10/NEU-CLS/X-SDD/Severstal tetap proporsional di ketiga split, bukan
-kebetulan satu sumber ngumpul semua di train doang).
+The total Defect count is used as the target; Normal is sampled to match
+(see README.md section 2, "Strategi balance"). The train/val/test split is
+done separately per source so proportions stay consistent across splits.
 
-Contoh pemakaian:
+Example usage:
     python scripts/build_stage1_binary.py \
         --defect_sources gc10=data/raw/gc10 neu_cls=data/raw/neu_cls xsdd=data/raw/xsdd \
         --normal_source data/raw/severstal_clean \
@@ -70,25 +68,23 @@ def build_stage1_binary(
     }
     total_defect = sum(len(v) for v in defect_by_source.values())
     if total_defect == 0:
-        raise RuntimeError("Tidak ada gambar defect ditemukan, cek --defect_sources")
+        raise RuntimeError("No defect images found, check --defect_sources")
 
     all_normal = _gather_images(normal_source)
     if len(all_normal) < total_defect:
         print(
-            f"WARNING: Normal cuma {len(all_normal)} gambar, kurang dari total "
-            f"Defect ({total_defect}). Pakai semua yang ada -> dataset jadi timpang "
-            f"ke sisi Defect, imbang belum tercapai."
+            f"WARNING: only {len(all_normal)} Normal images available, fewer than total "
+            f"Defect ({total_defect}). Using all of them; the dataset will be imbalanced."
         )
         sampled_normal = all_normal
     else:
         sampled_normal = random.Random(seed).sample(all_normal, total_defect)
 
-    print("Distribusi sumber kelas 'Defect':")
+    print("Source distribution for class 'Defect':")
     for name, imgs in defect_by_source.items():
         print(f"  {name:15s} {len(imgs):5d}")
     print(f"Total Defect: {total_defect}, Normal (sampled): {len(sampled_normal)}\n")
 
-    # Defect: split per-sumber, supaya proporsi sumber terjaga di tiap split.
     for source_name, imgs in defect_by_source.items():
         train, val, test = _split_list(imgs, val_ratio, test_ratio, seed)
         for split_name, split_files in [("train", train), ("val", val), ("test", test)]:
@@ -96,7 +92,6 @@ def build_stage1_binary(
             for img_path in split_files:
                 shutil.copy2(img_path, dest_dir / f"{source_name}__{img_path.name}")
 
-    # Normal: satu sumber (Severstal), split biasa.
     train, val, test = _split_list(sampled_normal, val_ratio, test_ratio, seed)
     for split_name, split_files in [("train", train), ("val", val), ("test", test)]:
         dest_dir = out_dir / split_name / "Normal"
@@ -110,12 +105,12 @@ def build_stage1_binary(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Bangun dataset stage 1 (binary Defect vs Normal)")
+    parser = argparse.ArgumentParser(description="Build the stage 1 dataset (binary Defect vs Normal)")
     parser.add_argument(
         "--defect_sources", nargs="+", required=True,
-        help="Pasangan nama=path, contoh: gc10=data/raw/gc10 neu_cls=data/raw/neu_cls xsdd=data/raw/xsdd",
+        help="name=path pairs, e.g. gc10=data/raw/gc10 neu_cls=data/raw/neu_cls xsdd=data/raw/xsdd",
     )
-    parser.add_argument("--normal_source", required=True, help="Folder gambar defect-free (hasil prepare_severstal.py)")
+    parser.add_argument("--normal_source", required=True, help="Folder of defect-free images (output of prepare_severstal.py)")
     parser.add_argument("--out_dir", required=True)
     parser.add_argument("--val_ratio", type=float, default=0.15)
     parser.add_argument("--test_ratio", type=float, default=0.15)
@@ -130,7 +125,7 @@ def main():
         test_ratio=args.test_ratio,
         seed=args.seed,
     )
-    print(f"\nSelesai. Dataset stage 1 tersimpan di {args.out_dir}")
+    print(f"\nDone. Stage 1 dataset saved to {args.out_dir}")
 
 
 if __name__ == "__main__":

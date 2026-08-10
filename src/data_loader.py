@@ -3,15 +3,11 @@ Dataset and DataLoader implementations for classification and object
 detection, produced by scripts/prepare_data.py and
 scripts/build_combined_dataset.py.
 
-Classification layout (per dataset or combined):
-    <root>/train|val|test/<class_name>/*.jpg
-
-Detection layout, YOLO format (per dataset or combined):
-    <root>/images/{train,val,test}/*.jpg
-    <root>/labels/{train,val,test}/*.txt   # "class_id xc yc w h", normalized
+Classification layout: <root>/train|val|test/<class_name>/*.jpg
+Detection layout (YOLO): <root>/images|labels/{train,val,test}/*
 
 Label indices follow `class_names` order from the config, not alphabetical
-folder order, to stay consistent with class_mapping.py.
+folder order.
 """
 
 from __future__ import annotations
@@ -29,11 +25,6 @@ IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
-
-
-# ---------------------------------------------------------------------------
-# Classification
-# ---------------------------------------------------------------------------
 
 
 class FolderClassificationDataset(Dataset):
@@ -150,18 +141,10 @@ def get_classification_dataloaders(
     }
 
 
-# ---------------------------------------------------------------------------
-# Object detection (YOLO format: images/<split>, labels/<split>)
-# ---------------------------------------------------------------------------
-
-
 class YoloDetectionDataset(Dataset):
-    """Reads a YOLO-format dataset and returns torchvision-style targets:
-        {"boxes": FloatTensor[N,4] (xyxy, absolute px), "labels": LongTensor[N]}
-
-    `background_offset=1` is used for torchvision models (Faster R-CNN,
-    RetinaNet), which reserve label 0 for background.
-    """
+    """Returns torchvision-style targets: {"boxes": FloatTensor[N,4] (xyxy,
+    absolute px), "labels": LongTensor[N]}. `background_offset=1` is used
+    for torchvision models, which reserve label 0 for background."""
 
     def __init__(
         self,
@@ -238,7 +221,6 @@ class YoloDetectionDataset(Dataset):
 
         boxes, labels = self._read_label_file(img_path, orig_w, orig_h)
 
-        # Resize gambar ke img_size x img_size -> skala box mengikuti.
         scale_x = self.img_size / orig_w
         scale_y = self.img_size / orig_h
         if boxes:
@@ -298,11 +280,6 @@ def get_detection_dataloaders(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_ultralytics_data_yaml(config: dict[str, Any], out_path: str | Path) -> Path:
-    """
-    Bikin file data.yaml format Ultralytics (dipakai YOLO & RT-DETR)
-    dari config dataset yang sama dipakai jalur torchvision, supaya satu
-    config yaml detection bisa dipakai untuk kedua framework.
-    """
     ds_cfg = config["dataset"]
     root = Path(ds_cfg["root"]).resolve()
     data_yaml = {

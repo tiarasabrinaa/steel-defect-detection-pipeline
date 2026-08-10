@@ -1,17 +1,6 @@
-"""
-Builder untuk model detection berbasis torchvision, dua-tahap classical
-detector dari README.md bagian 3 - Task B:
-    fasterrcnn_resnet50_fpn_v2  (two-stage)
-    retinanet_resnet50_fpn_v2   (one-stage)
-
-YOLO(v8/11) dan RT-DETR TIDAK lewat sini — keduanya dipakai lewat package
-`ultralytics` langsung di train_detection.py karena API training/eval-nya
-sudah dioptimalkan library tersebut (lihat README.md bagian "Arsitektur
-pretrained" Task B).
-
-`num_classes` di sini adalah jumlah kelas FOREGROUND (tanpa background);
-torchvision butuh +1 slot untuk background di label index 0.
-"""
+"""torchvision detector builder (fasterrcnn_resnet50_fpn_v2, retinanet_resnet50_fpn_v2).
+YOLO/RT-DETR are handled separately via `ultralytics` in train_detection.py.
+`num_classes` excludes background (torchvision reserves label 0 for it)."""
 
 from __future__ import annotations
 
@@ -54,7 +43,4 @@ def build_model(arch_name: str, num_classes: int, pretrained: bool = True) -> nn
         return _build_faster_rcnn(num_classes, pretrained)
     if arch_name == "retinanet_resnet50_fpn_v2":
         return _build_retinanet(num_classes, pretrained)
-    raise ValueError(
-        f"Arsitektur torchvision '{arch_name}' tidak dikenal. "
-        f"Pilihan: {TORCHVISION_ARCHITECTURES}"
-    )
+    raise ValueError(f"Unknown torchvision architecture '{arch_name}'. Options: {TORCHVISION_ARCHITECTURES}")

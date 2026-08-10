@@ -1,9 +1,9 @@
-# Skenario A1 (README.md bagian 3) - GC10-DET saja, 10 kelas.
+# Scenario A1 (README.md section 3) - GC10-DET only, 10 classes.
 experiment_name: "steel-defect/classification/gc10"
 
 dataset:
   name: gc10
-  root: data/processed/gc10_cls   # train/val/test masing2 berisi 10 subfolder kelas
+  root: data/processed/gc10_cls
   num_classes: 10
   class_names:
     - punching_hole
@@ -32,26 +32,13 @@ scheduler:
   name: cosine
 
 loss:
-  weighted: false        # GC10 relatif balanced antar kelas; set true kalau setelah dicek ternyata timpang
+  weighted: false        # GC10 is relatively balanced across classes
   label_smoothing: 0.1
 
-# GC10 ~2.300 gambar / 10 kelas (~230/kelas) - dataset terbesar & paling
-# balanced di antara 3 dataset di project ini, dekat dengan regime standar
-# transfer-learning ImageNet. Linear head standar timm sudah cukup, tidak
-# perlu extra dropout/bottleneck (beda dengan NEU/X-SDD/combined di bawah).
+# GC10 is the largest, most balanced dataset here - a plain linear head is sufficient.
 head:
   type: linear
 
-# QAT (quantization-aware training, lihat src/utils/quantization.py) -
-# otomatis di-skip untuk convnext_tiny (belum didukung FX trace), aktif
-# untuk resnet50/efficientnetv2_s/mobilenetv3. Backend "qnnpack" (ARM)
-# karena kandidat edge-deploy paling relevan di README adalah MobileNetV3,
-# tapi resnet50/efficientnetv2_s dilatih juga biar ada baseline pembanding
-# "seberapa besar akurasi turun kalau di-quantize" antar arsitektur.
-# 35 epoch pertama tetap fp32 (bobot stabil dulu dari pretrained), baru 15
-# epoch terakhir disimulasikan noise int8 (QAT), observer di-freeze di
-# epoch 40 dan BN stats di epoch 45 (standar praktik QAT PyTorch: stabilkan
-# statistik sebelum convert final ke int8).
 quantization:
   enabled: true
   backend: qnnpack
@@ -63,7 +50,6 @@ early_stopping:
   patience: 10
   metric: f1_macro
 
-# Dilatih satu-satu, tiap arsitektur = 1 MLflow run terpisah.
 architectures:
   - resnet50
   - efficientnetv2_s

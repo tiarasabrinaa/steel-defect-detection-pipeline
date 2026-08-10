@@ -1,9 +1,9 @@
-# Skenario B2 (README.md bagian 3) - NEU-DET saja (bukan NEU-CLS), 6 kelas.
+# Scenario B2 (README.md section 3) - NEU-DET only (not NEU-CLS), 6 classes.
 experiment_name: "steel-defect/detection/neu_det"
 
 dataset:
   name: neu_det
-  root: data/processed/neu_det   # format YOLO: images/{train,val,test}, labels/{train,val,test}
+  root: data/processed/neu_det   # YOLO format: images/{train,val,test}, labels/{train,val,test}
   num_classes: 6
   class_names:
     - crazing

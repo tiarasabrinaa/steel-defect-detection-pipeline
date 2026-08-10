@@ -1,12 +1,5 @@
-# Stage 1 (README.md v3, bagian 2-3) - gate classifier biner Defect vs
-# Normal. Dataset: SEMUA gambar GC10-DET + NEU-CLS + X-SDD jadi "Defect"
-# (~5.460), disandingkan sample "Normal" sepadan dari subset defect-free
-# Severstal (lihat scripts/prepare_severstal.py + scripts/build_stage1_binary.py).
-#
-# class_names urutannya [Normal, Defect] - index 1 = Defect = kelas positif
-# yang paling penting recall-nya (README bagian 6: "Error propagation -
-# false negative stage 1 bikin gambar gak pernah sampai stage 2, recall
-# metrik paling kritis").
+# Stage 1: binary gate classifier, Defect vs Normal.
+# class_names order is [Normal, Defect].
 experiment_name: "steel-defect/classification/stage1_binary"
 
 dataset:
@@ -18,9 +11,9 @@ dataset:
     - Defect
 
 img_size: 224
-batch_size: 64        # dataset jauh lebih besar (~10.9k gambar) dari skenario lain, batch lebih besar aman
+batch_size: 64
 num_workers: 4
-epochs: 30             # dataset besar & balanced -> konvergen lebih cepat per-epoch dibanding skenario NEU/XSDD
+epochs: 30
 seed: 42
 
 optimizer:
@@ -32,31 +25,17 @@ scheduler:
   name: cosine
 
 loss:
-  weighted: false        # sengaja udah di-stratified balance ~1:1 dari scripts/build_stage1_binary.py
+  weighted: false
   label_smoothing: 0.1
 
-# Beda alasan dari NEU/X-SDD (yang butuh mlp karena dataset KECIL) - stage 1
-# ini datasetnya udah besar (~10.9k), tapi gabungan dari 4 SUMBER YANG BEDA
-# BANGET kamera/domainnya (GC10 line-scan industrial, NEU line-scan, X-SDD
-# patch ter-crop, Severstal strip photo). Risiko konkretnya: linear head
-# langsung di atas pooled feature itu decision boundary-nya cuma 1 garis
-# lurus - gampang "curang" belajar shortcut "ini dari sumber/kamera mana"
-# (yang kebetulan berkorelasi kuat sama label, krn kelas Normal 100% dari
-# Severstal & kelas Defect 100% dari GC10+NEU+XSDD) alih-alih beneran
-# belajar tekstur defect vs mulus. Bottleneck MLP+dropout maksa representasi
-# dimampatin dulu lewat non-linearity sebelum keputusan akhir, mempersulit
-# shortcut "hafalan sumber" itu (bukan garansi hilang total, tapi mitigasi
-# konkret) - lihat juga README bagian 2 soal risiko ini pas milih Severstal.
+# MLP head: Normal is 100% Severstal and Defect is 100% the other sources,
+# so a linear head could shortcut on source identity instead of texture.
 head:
   type: mlp
   hidden_dim: 512
   dropout: 0.3
   use_batchnorm: true
 
-# QAT WAJIB relevan di sini - ini justru model yang paling butuh ringan
-# (gate awal, jalan di SETIAP gambar sebelum keputusan lanjut ke detector
-# atau nggak, README bagian 6 "Latency budget"). Backend qnnpack (ARM/edge).
-# 21 epoch pertama fp32 (70%), 9 epoch terakhir QAT.
 quantization:
   enabled: true
   backend: qnnpack
@@ -66,9 +45,8 @@ quantization:
 
 early_stopping:
   patience: 8
-  metric: recall_per_class.Defect   # README bagian 7: recall kelas Defect diprioritaskan, bukan f1_macro
+  metric: recall_per_class.Defect
 
-# Arsitektur README.md v3 bagian 5 (Stage 1) - kandidat ringan/cepat buat gate classifier.
 architectures:
   - resnet18
   - mobilenetv3_small

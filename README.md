@@ -1,67 +1,65 @@
 # Steel Surface Defect — Cascade Binary Classification + Detection Pipeline (v3, Prototype Phase)
 
-Pipeline 2-tahap: klasifikasi biner cepat (Defect vs Normal) sebagai gate awal, lanjut ke object detection multi-kelas cuma kalau ada defect. Versi prototype — belum ada kamera produksi yang fix, jadi semua dataset publik yang ada dipakai apa adanya dulu buat bangun mekanisme pipeline-nya. Kalibrasi ke scale kamera asli menyusul begitu kamera sudah ditentukan.
+A two-stage pipeline: a fast binary classifier (Defect vs Normal) acts as an initial gate, followed by multi-class object detection only when a defect is detected. This is a prototype phase — no production camera has been finalized yet, so publicly available datasets are used as-is to build the pipeline mechanics. Calibration to the actual production camera setup follows once it is determined.
 
 ---
 
-## 1. Flow Sistem
+## 1. System Flow
 
 ```
 Raw Image
    │
    ▼
-[Model Klasifikasi Biner] ← ringan, cepat, 2 kelas: Defect / Normal
+[Binary Classifier] ← lightweight, fast, 2 classes: Defect / Normal
    │
-   ├── Prediksi: NORMAL ──────────► selesai, tampilkan "OK"
+   ├── Prediction: NORMAL ──────────► done, report "OK"
    │
-   └── Prediksi: DEFECT
+   └── Prediction: DEFECT
               │
               ▼
-      [Model Object Detection] ← 15 kelas defect + lokasi, cuma jalan kalau perlu
+      [Object Detector] ← 15 defect classes + location, runs only when needed
               │
               ▼
-      Bounding box lokasi defect + kelas
+      Bounding boxes with defect location and class
 ```
 
 ---
 
 ## 2. Dataset per Stage
 
-### Stage 1 — Klasifikasi Biner (Defect vs Normal)
+### Stage 1 — Binary Classification (Defect vs Normal)
 
-Semua dataset dipakai, di-stratified sampling supaya kelas Defect vs Normal seimbang.
+All datasets are used, with stratified sampling to balance the Defect and Normal classes.
 
-| Sumber | Kontribusi ke label "Defect" | Kontribusi ke label "Normal" |
+| Source | Contribution to "Defect" | Contribution to "Normal" |
 |---|---|---|
-| GC10-DET | ✅ semua gambar (defect-only dataset) | – |
-| NEU-CLS | ✅ semua gambar (defect-only dataset) | – |
-| X-SDD | ✅ semua gambar (defect-only dataset) | – |
-| Severstal | (opsional, gambar dengan defect bisa ditambah kalau butuh lebih banyak) | ✅ subset no-defect (sumber utama kelas Normal) |
+| GC10-DET | ✅ all images (defect-only dataset) | – |
+| NEU-CLS | ✅ all images (defect-only dataset) | – |
+| X-SDD | ✅ all images (defect-only dataset) | – |
+| Severstal | (optional, defective images can be added if more are needed) | ✅ defect-free subset (primary source for Normal) |
 
-**Strategi balance:** total gambar "Defect" dari GC10+NEU-CLS+X-SDD (~2.300+1.800+1.360 ≈ 5.460 gambar) dijadikan acuan, lalu ambil sample "Normal" dari Severstal dalam jumlah yang sepadan (stratified, bukan asal ambil semua ribuan gambar Normal-nya — supaya gak timpang ke salah satu sisi). Implementasi: `scripts/prepare_severstal.py` (staging gambar defect-free dari Severstal) → `scripts/build_stage1_binary.py` (assemble + balance + split train/val/test, per-sumber supaya proporsi GC10/NEU-CLS/X-SDD/Severstal terjaga di tiap split) → config `configs/classification/cls_stage1_binary.yaml`.
+**Balancing strategy:** the total "Defect" image count from GC10+NEU-CLS+X-SDD (~2,300+1,800+1,360 ≈ 5,460 images) is used as the target, and a matching number of "Normal" images is sampled from Severstal (stratified, not all available images, to avoid skewing the dataset). Implementation: `scripts/prepare_severstal.py` (stages defect-free Severstal images) → `scripts/build_stage1_binary.py` (assembles, balances, and splits into train/val/test per source so proportions are preserved across splits) → config `configs/classification/cls_stage1_binary.yaml`.
 
-### Stage 2 — Object Detection (15 kelas defect)
+### Stage 2 — Object Detection (15 defect classes)
 
-Tidak berubah dari rencana sebelumnya:
-
-| Sumber | Kontribusi |
+| Source | Contribution |
 |---|---|
-| GC10-DET | 10 kelas + bbox |
-| NEU-DET | 6 kelas + bbox (5 unik + 1 overlap "inclusion") |
-| Severstal (subset no-defect) | Negative samples (anti false-positive), ~10-15% dari jumlah gambar positive |
-| ~~X-SDD~~ | Gak dipakai — classification-only, gak ada bbox |
+| GC10-DET | 10 classes + bounding boxes |
+| NEU-DET | 6 classes + bounding boxes (5 unique + 1 overlapping "inclusion") |
+| Severstal (defect-free subset) | Negative samples (anti-false-positive), ~10-15% of positive image count |
+| ~~X-SDD~~ | Not used — classification-only, no bounding boxes |
 
-Implementasi: `configs/detection/det_combined.yaml` udah persis skenario ini (union GC10-DET+NEU-DET = 15 kelas) dari sebelum README v3 ditulis, jadi tinggal dipakai langsung — tinggal build datanya lewat `scripts/build_combined_dataset.py --task detection --sources gc10=... neu_det=... --negatives_dir data/raw/severstal_clean --negative_ratio 0.12`. Negative sample ditulis sebagai label file kosong (0 object) — sudah otomatis dihandle `YoloDetectionDataset` di `src/data_loader.py`, gak perlu ubah loader.
+Implementation: `configs/detection/det_combined.yaml` already matches this scenario (GC10-DET + NEU-DET union = 15 classes). Build the data with `scripts/build_combined_dataset.py --task detection --sources gc10=... neu_det=... --negatives_dir data/raw/severstal_clean --negative_ratio 0.12`. Negative samples are written as empty label files (0 objects), already handled by `YoloDetectionDataset` in `src/data_loader.py`.
 
 ---
 
-## 3. Kelas
+## 3. Classes
 
-**Stage 1 (Classifier):** 2 kelas — `Defect`, `Normal`
+**Stage 1 (Classifier):** 2 classes — `Defect`, `Normal`
 
-**Stage 2 (Detector):** 15 kelas defect (union GC10-DET + NEU-DET, "inclusion" di-merge):
+**Stage 2 (Detector):** 15 defect classes (union of GC10-DET and NEU-DET, "inclusion" merged):
 
-| # | Kelas | Sumber |
+| # | Class | Source |
 |---|---|---|
 | 1 | Inclusion | GC10-DET + NEU-DET (merged) |
 | 2 | Crazing | NEU-DET |
@@ -81,108 +79,108 @@ Implementasi: `configs/detection/det_combined.yaml` udah persis skenario ini (un
 
 ---
 
-## 4. Status: Prototype, Belum Dikalibrasi ke Kamera Real
+## 4. Status: Prototype, Not Yet Calibrated to a Real Camera
 
-Ini bukan gap yang "harus diputuskan sekarang" — ini catatan status yang wajib dibawa ke tahap berikutnya begitu kamera produksi sudah ditentukan.
+This is not a gap that needs resolving right now — it is a status note to carry forward once the production camera is determined.
 
-**Kenapa semua dataset publik defect steel itu zoom-in:** kemungkinan besar bukan kebetulan — fitur defect (retakan halus, inclusion kecil, dll) butuh resolusi/jarak dekat buat kelihatan dan bisa dilabeli, jadi dataset akademik di domain ini memang lazim dikumpulkan dari kamera dekat ke material (line-scan camera di jalur produksi), bukan wide-shot dari jauh.
+**Why every public steel defect dataset is close-up:** likely not a coincidence — defect features (fine cracks, small inclusions, etc.) require close range/high resolution to be visible and labelable, so academic datasets in this domain are typically collected with cameras positioned close to the material (line-scan cameras on production lines), not wide shots from a distance.
 
-**Kalau nanti kamera produksi ditentukan:**
-- Kalau kameranya juga dipasang dekat ke material (mirip setup line-scan industrial) → data yang ada sekarang kemungkinan besar udah cukup representatif, gak perlu perubahan besar.
-- Kalau kameranya jauh/wide-shot (misal user upload foto dari HP dengan jarak gak terkontrol) → perlu collect sample dari kamera asli buat validasi, dan kemungkinan perlu fine-tuning tambahan atau augmentasi khusus (scale-jitter, copy-paste defect patch ke background yang lebih luas) sebelum dianggap production-ready.
+**Once the production camera is determined:**
+- If it is also positioned close to the material (similar to an industrial line-scan setup) → the current data is likely already representative, no major changes needed.
+- If it is a wide/distant shot (e.g. a phone photo at uncontrolled distance) → real-camera samples will need to be collected for validation, and additional fine-tuning or augmentation (scale jitter, copy-pasting defect patches onto a wider background) may be needed before considering the pipeline production-ready.
 
 ---
 
-## 5. Eksperimen — Pilihan Arsitektur Pretrained
+## 5. Experiments — Pretrained Architecture Choices
 
-### Stage 1 — Klasifikasi Biner
+### Stage 1 — Binary Classification
 
-| Arsitektur | Catatan |
+| Architecture | Notes |
 |---|---|
-| MobileNetV3-Small | Kandidat utama, paling ringan |
-| EfficientNetV2-S | Balance speed & akurasi |
-| ResNet18 | Baseline standar |
+| MobileNetV3-Small | Primary candidate, lightest |
+| EfficientNetV2-S | Balance of speed and accuracy |
+| ResNet18 | Standard baseline |
 
-### Stage 2 — Object Detection (15 kelas)
+### Stage 2 — Object Detection (15 classes)
 
-| Arsitektur | Catatan |
+| Architecture | Notes |
 |---|---|
-| YOLOv8/YOLO11 (small/medium) | Kandidat utama |
-| RT-DETR | Alternatif transformer-based |
-| Faster R-CNN (ResNet50-FPN) | Baseline two-stage klasik |
-| RetinaNet | Alternatif one-stage |
+| YOLOv8/YOLO11 (small/medium) | Primary candidates |
+| RT-DETR | Transformer-based alternative |
+| Faster R-CNN (ResNet50-FPN) | Classic two-stage baseline |
+| RetinaNet | One-stage alternative |
 
 ---
 
-## 6. Trade-off
+## 6. Trade-offs
 
-- **Error propagation** — false negative stage 1 (defect ke-klasifikasi "Normal") bikin gambar gak pernah sampai stage 2. Recall jadi metrik paling kritis di stage 1.
-- **Belum representasi scale kamera real** — lihat bagian 4, ini sadar-diketahui, bukan diabaikan.
-- **Class imbalance stage 2** — GC10-DET nyumbang 10 dari 15 kelas, jadi kelas dari NEU-DET otomatis lebih sedikit sampelnya. Wajib weighted loss/oversampling.
-- **Stratified sampling stage 1** — perlu dipastikan rasio Defect:Normal gak timpang drastis, dan idealnya dicek juga distribusi sumber di dalam kelas Defect (jangan sampai GC10 mendominasi 90% gara-gara paling banyak gambarnya).
-- **Latency budget** — stage 1 harus signifikan lebih cepat dari stage 2 supaya cascade-nya worth it.
+- **Error propagation** — a stage 1 false negative (a defect classified as "Normal") means the image never reaches stage 2. Recall is the most critical metric at stage 1.
+- **Not yet representative of the real camera scale** — see section 4; this is a known and tracked limitation, not an oversight.
+- **Stage 2 class imbalance** — GC10-DET contributes 10 of 15 classes, so NEU-DET-only classes have fewer samples. Weighted loss/oversampling is required.
+- **Stage 1 stratified sampling** — the Defect:Normal ratio must stay reasonably balanced, and the source distribution within the Defect class should also be checked (to avoid GC10 dominating simply because it has the most images).
+- **Latency budget** — stage 1 must be significantly faster than stage 2 for the cascade to be worthwhile.
 
 ---
 
-## 7. Metrik Evaluasi
+## 7. Evaluation Metrics
 
-**Stage 1 (Klasifikasi Biner):**
-- Recall & Precision untuk kelas Defect (recall diprioritaskan — false negative lebih mahal daripada false positive)
+**Stage 1 (Binary Classification):**
+- Recall and precision for the Defect class (recall prioritized — false negatives are more costly than false positives)
 - F1, confusion matrix
-- Breakdown recall per sumber dataset asal (GC10 vs NEU-CLS vs X-SDD) — buat lihat apakah ada sumber yang jauh lebih susah dikenali
-- Inference latency (ms/gambar)
+- Recall breakdown by source dataset (GC10 vs NEU-CLS vs X-SDD), to check whether any source is harder to classify
+- Inference latency (ms/image)
 
 **Stage 2 (Object Detection):**
 - mAP@0.5, mAP@0.5:0.95, per-class AP
-- False positive rate di gambar clean (dari Severstal)
-- Inference latency (ms/gambar)
+- False positive rate on clean images (from Severstal)
+- Inference latency (ms/image)
 
 **End-to-end:**
-- Overall recall (raw image → box keluar)
-- Total latency rata-rata
+- Overall recall (raw image → box output)
+- Average total latency
 
 ---
 
-## 8. Struktur Project (aktual)
+## 8. Project Structure
 
-> Catatan implementasi: `train_classification.py`/`train_detection.py` (training loop generic, udah support arbitrary dataset+arsitektur lewat config) **sengaja TIDAK di-rename/dibongkar** — cuma dataset & config yang baru buat stage 1/2, model training scripts-nya reuse langsung. Detail keputusan ini di bagian 9 (Roadmap).
+> Implementation note: `train_classification.py`/`train_detection.py` (a generic training loop already supporting arbitrary datasets and architectures via config) were intentionally **not** renamed or restructured — only new datasets and configs were added for stages 1/2, reusing the training scripts as-is. See the roadmap (section 9) for context.
 
 ```
 steel-defect-detection/
 ├── data/
 │   ├── raw/
 │   │   ├── gc10/
-│   │   ├── neu_cls/           # stage 1 (semua gambar -> label Defect)
-│   │   ├── neu_det/           # stage 2 (bbox)
-│   │   ├── xsdd/               # stage 1 saja (crop patch, gak ada bbox)
-│   │   └── severstal_clean/   # hasil scripts/prepare_severstal.py - defect-free, dipakai stage 1 & 2
-│   ├── processed/              # hasil scripts/prepare_data.py (bbox VOC->YOLO, split)
+│   │   ├── neu_cls/           # stage 1 (all images -> Defect label)
+│   │   ├── neu_det/           # stage 2 (bounding boxes)
+│   │   ├── xsdd/               # stage 1 only (cropped patches, no bounding boxes)
+│   │   └── severstal_clean/   # output of scripts/prepare_severstal.py - defect-free, used in stages 1 and 2
+│   ├── processed/              # output of scripts/prepare_data.py (VOC->YOLO conversion, splits)
 │   └── combined/
-│       ├── stage1_binary/      # hasil scripts/build_stage1_binary.py (Defect vs Normal, balanced)
-│       └── detection/          # hasil scripts/build_combined_dataset.py (union 15 kelas + negative Severstal)
+│       ├── stage1_binary/      # output of scripts/build_stage1_binary.py (Defect vs Normal, balanced)
+│       └── detection/          # output of scripts/build_combined_dataset.py (15-class union + Severstal negatives)
 ├── src/
-│   ├── class_mapping.py        # harmonisasi kelas (termasuk union 15 kelas GC10+NEU-DET)
+│   ├── class_mapping.py        # class harmonization (including the 15-class GC10+NEU-DET union)
 │   ├── data_loader.py
 │   ├── models/
-│   │   ├── classification.py   # builder timm, termasuk resnet18/mobilenetv3_small buat stage 1
+│   │   ├── classification.py   # timm model builder, includes resnet18/mobilenetv3_small for stage 1
 │   │   └── detection.py
 │   ├── utils/
 │   │   ├── mlflow_utils.py
-│   │   ├── quantization.py     # QAT - relevan banget buat stage 1 (gate classifier, harus ringan)
+│   │   ├── quantization.py     # QAT - most relevant for stage 1 (needs to be lightweight)
 │   │   └── ...
-│   ├── train_classification.py # dipakai buat stage 1 (config cls_stage1_binary.yaml) DAN skenario riset lama
-│   └── train_detection.py      # dipakai buat stage 2 (config det_combined.yaml, sudah 15 kelas)
+│   ├── train_classification.py # used for stage 1 (cls_stage1_binary.yaml) and the earlier research scenarios
+│   └── train_detection.py      # used for stage 2 (det_combined.yaml, already 15 classes)
 ├── configs/
 │   ├── classification/
-│   │   ├── cls_stage1_binary.yaml   # <- STAGE 1 (baru)
-│   │   └── cls_*.yaml                # skenario riset lama (A1-A4), tetap ada, gak kepake di flow production
+│   │   ├── cls_stage1_binary.yaml   # <- STAGE 1
+│   │   └── cls_*.yaml                # earlier research scenarios (A1-A4), kept but unused by the production flow
 │   └── detection/
-│       ├── det_combined.yaml   # <- STAGE 2 (udah GC10+NEU-DET union 15 kelas dari awal, tinggal reuse)
-│       └── det_*.yaml           # skenario riset lama (B1/B2), tetap ada
+│       ├── det_combined.yaml   # <- STAGE 2 (GC10+NEU-DET 15-class union)
+│       └── det_*.yaml           # earlier research scenarios (B1/B2)
 ├── scripts/
-│   ├── prepare_severstal.py         # cari & staging gambar defect-free dari train.csv Severstal
-│   ├── build_stage1_binary.py       # assemble+balance dataset stage 1
-│   ├── build_combined_dataset.py    # assemble stage 2 (+ --negatives_dir buat fold Severstal)
+│   ├── prepare_severstal.py         # finds and stages defect-free images from the Severstal train.csv
+│   ├── build_stage1_binary.py       # assembles and balances the stage 1 dataset
+│   ├── build_combined_dataset.py    # assembles the stage 2 dataset (+ --negatives_dir to fold in Severstal)
 │   ├── prepare_data.py
 │   └── voc_to_yolo.py
 ├── notebooks/
@@ -195,25 +193,25 @@ steel-defect-detection/
 
 ## 9. Roadmap
 
-1. Download GC10-DET, NEU-CLS, NEU-DET, X-SDD, subset no-defect Severstal (Severstal: Kaggle **competition** dataset, butuh akun Kaggle + accept competition rules dulu di halaman datanya, baru bisa `kaggle competitions download`)
-2. ✅ `scripts/prepare_severstal.py` — parse `train.csv` (handle 2 varian format kolom), staging gambar defect-free ke `data/raw/severstal_clean/`
-3. ✅ `scripts/build_stage1_binary.py` — balance Defect vs Normal buat stage 1 (split per-sumber, cek distribusi sumber di dalam kelas Defect)
-4. ✅ `scripts/build_combined_dataset.py --negatives_dir` — fold negative Severstal ke stage 2 (~10-15% dari jumlah gambar positive, biar detector gak jadi kelewat konservatif — lihat bagian 6)
-5. ✅ `src/class_mapping.py` — harmonisasi 15 kelas stage 2 (merge "inclusion", sudah dipakai skenario B4 sebelumnya, angkanya konsisten)
-6. Training & bandingkan arsitektur stage 1 (binary classifier) — `python -m src.train_classification --config configs/classification/cls_stage1_binary.yaml`, pilih berdasarkan recall kelas Defect + latency
-7. Training & bandingkan arsitektur stage 2 (detector, 15 kelas) — `python -m src.train_detection --config configs/detection/det_combined.yaml --framework all`, pilih berdasarkan mAP + latency
-8. Rakit `src/pipeline.py` — chain load best checkpoint stage 1 -> kalau Defect, load best checkpoint stage 2 -> jalankan (belum dibuat)
-9. Uji end-to-end dengan data yang ada (masih pakai dataset publik, belum kamera asli)
-10. **Checkpoint penting:** begitu kamera produksi ditentukan, kumpulkan sample dari kamera asli, validasi ulang apakah model masih akurat di scale itu (bagian 4), fine-tune/kalibrasi kalau perlu
+1. Download GC10-DET, NEU-CLS, NEU-DET, X-SDD, and the defect-free Severstal subset (Severstal is a Kaggle **competition** dataset — requires a Kaggle account and accepting the competition rules before `kaggle competitions download` works)
+2. ✅ `scripts/prepare_severstal.py` — parses `train.csv` (handles both column format variants), stages defect-free images into `data/raw/severstal_clean/`
+3. ✅ `scripts/build_stage1_binary.py` — balances Defect vs Normal for stage 1 (per-source split, checks source distribution within the Defect class)
+4. ✅ `scripts/build_combined_dataset.py --negatives_dir` — folds Severstal negatives into stage 2 (~10-15% of positive image count, see section 6)
+5. ✅ `src/class_mapping.py` — harmonizes the 15 stage 2 classes ("inclusion" merged)
+6. Train and compare stage 1 architectures (binary classifier) — `python -m src.train_classification --config configs/classification/cls_stage1_binary.yaml`, select based on Defect-class recall and latency
+7. Train and compare stage 2 architectures (detector, 15 classes) — `python -m src.train_detection --config configs/detection/det_combined.yaml --framework all`, select based on mAP and latency
+8. Build `src/pipeline.py` — chain: load the best stage 1 checkpoint, and if Defect, load the best stage 2 checkpoint and run it (not yet built)
+9. Run end-to-end tests with the currently available data (still public datasets, not the real camera)
+10. **Key checkpoint:** once the production camera is determined, collect real-camera samples, re-validate model accuracy at that scale (section 4), fine-tune/calibrate as needed
 
-> Scope repo ini berhenti di checkpoint (`.pt`) hasil training stage 1 & stage 2 + `pipeline.py` buat uji end-to-end lokal. Integrasi ke web app/API itu konsumen terpisah dari model yang dihasilkan di sini, bukan bagian dari repo ini.
+> This repository's scope ends at the trained checkpoints (`.pt`) for stages 1 and 2, plus `pipeline.py` for local end-to-end testing. Integration into a web app or API is a separate downstream consumer of these models, not part of this repository.
 
 ---
 
-## 10. Catatan Sumber
+## 10. Source Notes
 
-- GC10-DET: [github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets](https://github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets) (link Baidu Pan, kode: `cdyt`)
+- GC10-DET: [github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets](https://github.com/lvxiaoming2019/GC10-DET-Metallic-Surface-Defect-Datasets) (Baidu Pan link, code: `cdyt`)
 - NEU-CLS (mirror): [kaggle.com/datasets/kaustubhdikshit/neu-surface-defect-database](https://www.kaggle.com/datasets/kaustubhdikshit/neu-surface-defect-database)
 - NEU-DET: [ieee-dataport.org/documents/neu-det](https://ieee-dataport.org/documents/neu-det)
-- X-SDD: [ieee-dataport.org/documents/x-sdd](https://ieee-dataport.org/documents/x-sdd) (butuh subscription/akun IEEE)
+- X-SDD: [ieee-dataport.org/documents/x-sdd](https://ieee-dataport.org/documents/x-sdd) (requires an IEEE subscription/account)
 - Severstal Steel Defect Dataset: [kaggle.com/c/severstal-steel-defect-detection](https://www.kaggle.com/c/severstal-steel-defect-detection/data)

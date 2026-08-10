@@ -1,62 +1,20 @@
 """
-Reorganisasi dataset mentah (hasil download manual, lihat README.md bagian 1
-& 8) menjadi struktur standar `data/processed/` yang dipakai src/data_loader.py.
+Reorganizes raw downloaded datasets into the `data/processed/` layout used
+by src/data_loader.py.
 
-Struktur raw data yang di-handle (per dataset, hasil ngecek langsung isi
-`data/raw/` — BUKAN asumsi generik VOC, tiap mirror emang beda-beda):
+  GC10-DET: data/raw/gc10/<1-10>/*.jpg (folder number, not class name) +
+            data/raw/gc10/lable/*.xml (<name> is pinyin, mapped via
+            GC10_TAG_TO_CLASS / GC10_CLASS_TO_FOLDER below)
+  NEU-CLS:  extracted from the NEU-DET raw folder, no separate download
+  NEU-DET:  data/raw/neu_det/{train,validation}/images|annotations/...
+  X-SDD:    data/raw/xsdd/<folder name>/*.jpg (mapped via XSDD_FOLDER_ALIASES)
 
-  GC10-DET (gc10_cls, gc10_det):
-      data/raw/gc10/<1-10>/*.jpg     <- gambar, per NOMOR folder (bukan nama kelas!)
-      data/raw/gc10/lable/*.xml      <- anotasi flat, <name> di XML itu PINYIN+angka
-                                         (misal "3_yueyawan") - dipetakan lewat
-                                         GC10_TAG_TO_CLASS di bawah (sumber:
-                                         data/raw/gc10/Defects Description.xlsx, kolom "标签").
-                                         PENTING: nomor folder tempat gambar berada TIDAK
-                                         SAMA dengan kelas semua object di dalamnya - 1 gambar
-                                         GC10 bisa punya lebih dari 1 jenis defect (defect
-                                         utama sesuai folder + defect sekunder kelas lain).
-                                         Buat gc10_det, kelas HARUS dibaca per-object dari
-                                         <name> XML (lewat name_remap), BUKAN dipukul rata
-                                         pakai kelas foldernya - kalau dipukul rata, defect
-                                         sekunder ke-mislabel jadi kelas defect utama folder
-                                         itu (bug nyata yang sempet kejadian & ketauan pas
-                                         di-visual-check, lihat commit fix-nya).
-                                         Buat gc10_cls (classification whole-image), pakai
-                                         kelas folder TETAP relevan/benar - itu memang
-                                         metodologi standar dataset ini buat task classification
-                                         (1 label dominan per gambar, GC10_CLASS_TO_FOLDER).
+Output: data/processed/<dataset>/{train,val,test}/<class>/*.jpg (classification)
+        data/processed/<dataset>/images|labels/{train,val,test}/* (detection)
 
-  NEU-CLS (neu_cls):
-      GAK didownload terpisah - gambarnya SAMA kayak NEU-DET, cuma dipakai
-      TANPA bbox. Diekstrak dari raw_dir NEU-DET langsung (lihat
-      prepare_neu_cls_from_neu_det).
-
-  NEU-DET (neu_det):
-      data/raw/neu_det/{train,validation}/images/<class_name>/*.jpg
-      data/raw/neu_det/{train,validation}/annotations/*.xml
-      (<name> di XML-nya udah bahasa Inggris & konsisten, aman dipakai langsung.
-      Mirror ini gak punya split "test" - train+validation digabung lalu
-      di-split ulang 70/15/15 sendiri biar konsisten sama dataset lain.)
-
-  X-SDD (xsdd_cls):
-      data/raw/xsdd/<nama folder>/*.jpg - nama foldernya PAKAI SPASI dan beda
-      kata dari canonical (`src/class_mapping.py::XSDD_CLASSES`), misal
-      "red iron" (bukan "red_iron_sheet"), "surface scratch" (bukan
-      "surface_scratches"). Dipetakan lewat XSDD_FOLDER_ALIASES di bawah.
-
-Output (semua dataset, format sama):
-  Classification -> data/processed/<dataset>/{train,val,test}/<class_name>/*.jpg
-  Detection      -> data/processed/<dataset>/images/{train,val,test}/*.jpg
-                     data/processed/<dataset>/labels/{train,val,test}/*.txt
-
-Split default 70/15/15, stratified per kelas, seed konsisten biar reproducible.
-
-Contoh pemakaian:
+Example usage:
     python scripts/prepare_data.py --task gc10_det --raw_dir data/raw/gc10 --out_dir data/processed/gc10_det
-    python scripts/prepare_data.py --task neu_det  --raw_dir data/raw/neu_det --out_dir data/processed/neu_det
     python scripts/prepare_data.py --task neu_cls  --raw_dir data/raw/neu_det --out_dir data/processed/neu_cls
-    python scripts/prepare_data.py --task xsdd_cls --raw_dir data/raw/xsdd --out_dir data/processed/xsdd
-    python scripts/prepare_data.py --task gc10_cls --raw_dir data/raw/gc10 --out_dir data/processed/gc10_cls
 """
 
 from __future__ import annotations
@@ -75,12 +33,8 @@ from src.class_mapping import get_dataset_classes
 
 IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
 
-# Sumber: data/raw/gc10/Defects Description.xlsx (kolom 英文/标签). Folder
-# angka -> nama kelas kanonik (lihat src/class_mapping.py::GC10_CLASSES).
-# PENTING: urutan folder angka BUKAN sama dengan urutan GC10_CLASSES index
-# (folder 8/9/10 = rolled_pit/crease/waist_folding, bukan waist_folding/
-# crease/rolled_pit seperti urutan GC10_CLASSES) - jangan pernah asumsikan
-# `folder_number - 1 == index GC10_CLASSES`, selalu lewat mapping nama ini.
+# Folder number -> class (from Defects Description.xlsx). Order does not
+# match GC10_CLASSES index order (folders 8/9/10 = rolled_pit/crease/waist_folding).
 GC10_FOLDER_TO_CLASS = {
     "1": "punching_hole",
     "2": "weld_line",
@@ -95,9 +49,7 @@ GC10_FOLDER_TO_CLASS = {
 }
 GC10_CLASS_TO_FOLDER = {v: k for k, v in GC10_FOLDER_TO_CLASS.items()}
 
-# Sumber SAMA (Defects Description.xlsx, kolom "标签") - ini mapping per-OBJECT
-# yang dipakai buat gc10_det, beda dari GC10_FOLDER_TO_CLASS di atas (yang
-# per-FILE, cuma valid buat gc10_cls). Tag ini persis isi tag <name> di XML.
+# Per-object XML <name> tag -> class, used for gc10_det.
 GC10_TAG_TO_CLASS = {
     "1_chongkong": "punching_hole",
     "2_hanfeng": "weld_line",
@@ -109,14 +61,10 @@ GC10_TAG_TO_CLASS = {
     "8_yahen": "rolled_pit",
     "9_zhehen": "crease",
     "10_yaozhe": "waist_folding",
-    "10_yaozhed": "waist_folding",  # typo di raw XML, TERNYATA lebih umum (131x) dari yang "bener" (12x) - verified langsung scan semua XML
+    "10_yaozhed": "waist_folding",  # variant spelling in the raw XML
 }
-# NB: ada juga 1 tag korup "d" doang di seluruh dataset (1 kejadian) - sengaja
-# TIDAK dipetakan (dibiarkan ke-skip dengan warning), gak ada cara reliable
-# buat nebak itu maksudnya kelas apa tanpa cek visual manual satu-satu.
 
-# Nama folder raw X-SDD (hasil download) -> nama kelas kanonik
-# (src/class_mapping.py::XSDD_CLASSES). Beda soal spasi/singular-plural/kata.
+# Raw X-SDD folder name -> canonical class name.
 XSDD_FOLDER_ALIASES = {
     "slag_inclusion": "slag inclusion",
     "red_iron_sheet": "red iron",
@@ -149,8 +97,6 @@ def prepare_classification(
     seed: int = 42,
     folder_aliases: dict[str, str] | None = None,
 ) -> None:
-    """folder_aliases: {nama_kelas_kanonik: nama_folder_raw_asli}, dipakai
-    kalau nama folder raw beda dari nama kelas kanonik (misal X-SDD)."""
     raw_dir, out_dir = Path(raw_dir), Path(out_dir)
     folder_aliases = folder_aliases or {}
     summary = {}
@@ -159,12 +105,12 @@ def prepare_classification(
         folder_name = folder_aliases.get(cls, cls)
         cls_dir = raw_dir / folder_name
         if not cls_dir.exists():
-            print(f"WARNING: folder kelas '{cls}' (dicari: '{folder_name}') tidak ditemukan di {raw_dir}, di-skip")
+            print(f"WARNING: class folder '{cls}' (looked for '{folder_name}') not found in {raw_dir}, skipping")
             continue
 
         files = sorted(p for p in cls_dir.iterdir() if p.suffix.lower() in IMG_EXTENSIONS)
         if not files:
-            print(f"WARNING: tidak ada gambar di {cls_dir}")
+            print(f"WARNING: no images in {cls_dir}")
             continue
 
         train, val, test = _split_list(files, val_ratio, test_ratio, seed)
@@ -176,7 +122,7 @@ def prepare_classification(
             for f in split_files:
                 shutil.copy2(f, dest_dir / f.name)
 
-    print(f"\nDistribusi jumlah sampel per kelas ({raw_dir.name}):")
+    print(f"\nSample count per class ({raw_dir.name}):")
     for cls, counts in summary.items():
         print(f"  {cls:35s} train={counts['train']:4d}  val={counts['val']:4d}  test={counts['test']:4d}")
 
@@ -189,9 +135,6 @@ def prepare_neu_cls_from_neu_det(
     test_ratio: float = 0.15,
     seed: int = 42,
 ) -> None:
-    """NEU-CLS gak ada file download terpisah - gambarnya sama persis kayak
-    NEU-DET, cuma dipakai tanpa bbox (classification-only). `raw_dir` di sini
-    HARUS folder raw NEU-DET (`data/raw/neu_det`), bukan folder NEU-CLS."""
     raw_dir, out_dir = Path(raw_dir), Path(out_dir)
     summary = {}
 
@@ -203,7 +146,7 @@ def prepare_neu_cls_from_neu_det(
                 files += [p for p in cls_dir.iterdir() if p.suffix.lower() in IMG_EXTENSIONS]
 
         if not files:
-            print(f"WARNING: tidak ada gambar buat kelas '{cls}' di {raw_dir}/{{train,validation}}/images/")
+            print(f"WARNING: no images for class '{cls}' in {raw_dir}/{{train,validation}}/images/")
             continue
 
         train, val, test = _split_list(sorted(files), val_ratio, test_ratio, seed)
@@ -215,15 +158,9 @@ def prepare_neu_cls_from_neu_det(
             for f in split_files:
                 shutil.copy2(f, dest_dir / f.name)
 
-    print(f"\nDistribusi jumlah sampel per kelas ({raw_dir.name}, diekstrak dari NEU-DET):")
+    print(f"\nSample count per class ({raw_dir.name}, extracted from NEU-DET):")
     for cls, counts in summary.items():
         print(f"  {cls:35s} train={counts['train']:4d}  val={counts['val']:4d}  test={counts['test']:4d}")
-
-
-# collect_pairs_fn balikin list (xml_path, img_path). Kelas tiap OBJECT di
-# dalam XML selalu dibaca dari <name> tag-nya sendiri (lewat voc_to_yolo_lines
-# + name_remap kalau perlu) - folder/lokasi file cuma dipakai buat nemuin
-# pasangan file, bukan buat nentuin kelas (lihat catatan GC10 di docstring atas).
 
 
 def _collect_gc10_pairs(raw_dir: Path) -> list[tuple[Path, Path]]:
@@ -243,7 +180,7 @@ def _collect_gc10_pairs(raw_dir: Path) -> list[tuple[Path, Path]]:
             else:
                 missing_xml += 1
     if missing_xml:
-        print(f"WARNING: {missing_xml} gambar GC10 tanpa anotasi XML cocok di {ann_dir}, di-skip")
+        print(f"WARNING: {missing_xml} GC10 images have no matching XML annotation in {ann_dir}, skipping")
     return pairs
 
 
@@ -276,22 +213,18 @@ def prepare_detection(
     collect_pairs_fn=None,
     name_remap: dict[str, str] | None = None,
 ) -> None:
-    """`name_remap`: {tag_asli_di_XML: nama_kelas_kanonik} - dipakai buat GC10
-    (<name> XML-nya pinyin). Diterapkan PER-OBJECT (lewat voc_to_yolo_lines),
-    bukan per-file - 1 gambar boleh punya object dengan kelas berbeda-beda."""
     raw_dir, out_dir = Path(raw_dir), Path(out_dir)
     class_to_id = {c: i for i, c in enumerate(class_names)}
 
     if collect_pairs_fn is not None:
         pairs = collect_pairs_fn(raw_dir)
     else:
-        # fallback VOC generik: Annotations/ + JPEGImages/
         ann_dir = raw_dir / "Annotations"
         img_dir = raw_dir / "JPEGImages"
         if not ann_dir.exists() or not img_dir.exists():
             raise FileNotFoundError(
-                f"Diperlukan {ann_dir} dan {img_dir} (struktur VOC generik). "
-                "Kalau raw_dir kamu strukturnya beda, pakai collect_pairs_fn custom."
+                f"Expected {ann_dir} and {img_dir} (generic VOC layout). "
+                "Pass a custom collect_pairs_fn for other layouts."
             )
         pairs = [
             (ann_dir / f"{p.stem}.xml", p)
@@ -300,13 +233,9 @@ def prepare_detection(
         pairs = [(x, i) for x, i in pairs if x.exists()]
 
     if not pairs:
-        raise RuntimeError(f"Tidak ada pasangan (xml, gambar) ditemukan di {raw_dir}")
+        raise RuntimeError(f"No (xml, image) pairs found in {raw_dir}")
 
-    # Stratifikasi split pakai kelas object PERTAMA di XML (setelah di-remap
-    # kalau perlu) sebagai "primary label" - gambar sering >1 object/kelas,
-    # jadi ini bukan stratifikasi sempurna, tapi jaga proporsi kelas kasar
-    # antara train/val/test. Kelas SEBENARNYA tiap box tetap dibaca ulang
-    # per-object pas nulis label (lihat voc_to_yolo_lines di bawah).
+    # Approximate stratification by each image's first object class.
     groups: dict[str, list[tuple[Path, Path]]] = defaultdict(list)
     skipped_no_object = 0
     for xml_path, img_path in pairs:
@@ -319,7 +248,7 @@ def prepare_detection(
         groups[primary_label].append((xml_path, img_path))
 
     if skipped_no_object:
-        print(f"WARNING: {skipped_no_object} file XML tanpa object, di-skip")
+        print(f"WARNING: {skipped_no_object} XML files have no objects, skipping")
 
     split_items: dict[str, list[tuple[Path, Path]]] = {"train": [], "val": [], "test": []}
     summary = {}
@@ -348,10 +277,10 @@ def prepare_detection(
             shutil.copy2(img_path, img_out / img_path.name)
             (label_out / f"{img_path.stem}.txt").write_text("\n".join(lines))
 
-    print(f"\nDistribusi gambar per primary-class ({raw_dir.name}):")
+    print(f"\nImage count per primary class ({raw_dir.name}):")
     for label, counts in summary.items():
         print(f"  {label:35s} train={counts['train']:4d}  val={counts['val']:4d}  test={counts['test']:4d}")
-    print(f"\nDistribusi jumlah BOX train per kelas sebenarnya (setelah baca per-object):")
+    print("\nActual train box count per class (read per object):")
     for label, n in sorted(box_counts.items()):
         print(f"  {label:35s} {n:5d}")
 
@@ -366,11 +295,11 @@ TASK_REGISTRY = {
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Reorganisasi raw dataset -> data/processed/")
+    parser = argparse.ArgumentParser(description="Reorganize raw datasets into data/processed/")
     parser.add_argument("--task", required=True, choices=list(TASK_REGISTRY))
     parser.add_argument(
         "--raw_dir", required=True,
-        help="Untuk --task neu_cls, isi dengan folder raw NEU-DET (data/raw/neu_det) - lihat docstring modul ini",
+        help="For --task neu_cls, pass the NEU-DET raw folder (data/raw/neu_det)",
     )
     parser.add_argument("--out_dir", required=True)
     parser.add_argument("--val_ratio", type=float, default=0.15)
@@ -390,7 +319,7 @@ def main():
         seed=args.seed,
         **extra_kwargs,
     )
-    print(f"\nSelesai. Hasil tersimpan di {args.out_dir}")
+    print(f"\nDone. Output saved to {args.out_dir}")
 
 
 if __name__ == "__main__":

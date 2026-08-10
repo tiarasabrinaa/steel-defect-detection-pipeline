@@ -1,18 +1,7 @@
-"""
-Training pipeline classification (Task A, README.md bagian 3).
+"""Classification training pipeline.
 
-Jalankan (dari root project):
+Usage:
     python -m src.train_classification --config configs/classification/cls_gc10.yaml
-
-Per arsitektur di config `architectures: [...]` dilatih sebagai MLflow run
-terpisah (semua di bawah experiment yang sama), supaya gampang dibandingkan
-di MLflow UI / Databricks. Setiap run:
-  - log SEMUA hyperparameter dari config yaml
-  - log metric val per epoch: accuracy, precision/recall/f1 (macro &
-    weighted + per-class), AUC (macro & per-class)
-  - simpan best checkpoint (.pt) berdasarkan val f1_macro -> upload ke MLflow
-  - di akhir training, evaluasi ke test set, log confusion matrix +
-    classification report sebagai artifact
 """
 
 from __future__ import annotations
@@ -62,7 +51,7 @@ def build_optimizer(model: nn.Module, opt_cfg: dict) -> torch.optim.Optimizer:
             model.parameters(), lr=lr, momentum=opt_cfg.get("momentum", 0.9),
             weight_decay=weight_decay,
         )
-    raise ValueError(f"Optimizer '{name}' tidak didukung")
+    raise ValueError(f"Unsupported optimizer '{name}'")
 
 
 @torch.no_grad()
@@ -111,7 +100,7 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
     ds_cfg = config["dataset"]
     class_names = ds_cfg["class_names"]
     num_classes = ds_cfg["num_classes"]
-    assert len(class_names) == num_classes, "class_names dan num_classes tidak konsisten"
+    assert len(class_names) == num_classes, "class_names and num_classes are inconsistent"
 
     data = get_classification_dataloaders(config)
     train_loader, val_loader, test_loader = (
@@ -149,7 +138,6 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         patience = early_stop_cfg.get("patience", epochs)
         monitor_metric = early_stop_cfg.get("metric", "f1_macro")
 
-        # --- QAT setup (opsional, lihat src/utils/quantization.py) ---
         quant_cfg = config.get("quantization", {})
         qat_requested = quant_cfg.get("enabled", False)
         qat_supported = is_qat_supported(arch_name)
@@ -159,13 +147,13 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         freeze_bn_stats_epoch = quant_cfg.get("freeze_bn_stats_epoch")
         qat_active = False
         qat_give_up = False
-        fp32_reference_state_dict = None  # snapshot fp32 tepat sebelum QAT aktif, buat bandingkan size/akurasi
+        fp32_reference_state_dict = None
 
         if qat_requested and not qat_supported:
             print(
-                f"[{arch_name}] quantization.enabled=true tapi arsitektur ini belum "
-                f"didukung QAT (FX trace tidak stabil). Didukung: {QAT_SUPPORTED_ARCHITECTURES}. "
-                "Training tetap jalan fp32 biasa."
+                f"[{arch_name}] quantization.enabled=true but this architecture is not "
+                f"QAT-supported. Supported: {QAT_SUPPORTED_ARCHITECTURES}. "
+                "Training continues in fp32."
             )
 
         best_score = -float("inf")
@@ -177,13 +165,9 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         best_ckpt_path = output_dir / "best.pt"
 
         for epoch in range(1, epochs + 1):
+            # Activate QAT at the scheduled epoch, or earlier if the run is
+            # about to early-stop without having tried it.
             qat_not_tried_yet = qat_requested and qat_supported and not qat_active and not qat_give_up
-            # QAT diaktifkan begitu SALAH SATU kejadian duluan: (a) udah nyampe
-            # epoch terjadwal (qat_start_epoch), ATAU (b) training baru mau
-            # early-stop (epochs_without_improve udah nyentuh patience) dan QAT
-            # belum sempat dicoba - daripada run langsung berhenti tanpa pernah
-            # nyoba QAT sama sekali, coba dulu QAT (dengan patience baru yang
-            # fresh); baru kalau QAT JUGA plateau, run beneran berhenti.
             if qat_not_tried_yet and (epoch > qat_start_epoch or epochs_without_improve >= patience):
                 fp32_reference_state_dict = copy.deepcopy(
                     best_state_dict if best_state_dict is not None else model.state_dict()
@@ -191,35 +175,31 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
                 try:
                     example_images, _ = next(iter(train_loader))
                     model = prepare_qat_model(model, example_images[:1], backend=qat_backend).to(device)
-                    # parameter tree berubah total (observer/fake-quant modules
-                    # baru) -> optimizer & scheduler harus dibangun ulang.
                     optimizer = build_optimizer(model, config.get("optimizer", {}))
                     if scheduler is not None:
                         scheduler = CosineAnnealingLR(optimizer, T_max=max(epochs - epoch + 1, 1))
-                    # reset tracking best-checkpoint: state_dict fp32 lama sudah
-                    # tidak kompatibel dengan struktur model QAT yang baru.
                     best_score = -float("inf")
                     best_state_dict = None
                     epochs_without_improve = 0
                     qat_active = True
-                    print(f"[{arch_name}] QAT diaktifkan mulai epoch {epoch} (backend={qat_backend})")
-                except Exception as exc:  # FX trace bisa gagal tergantung versi timm/torch
+                    print(f"[{arch_name}] QAT activated at epoch {epoch} (backend={qat_backend})")
+                except Exception as exc:
                     qat_give_up = True
-                    print(f"[{arch_name}] gagal prepare QAT ({exc}); lanjut training fp32 biasa")
+                    print(f"[{arch_name}] QAT preparation failed ({exc}); continuing in fp32")
 
             if qat_active:
                 if freeze_observer_epoch is not None and epoch == freeze_observer_epoch:
                     try:
                         model.apply(torch.ao.quantization.disable_observer)
-                        print(f"[{arch_name}] observer di-freeze di epoch {epoch}")
+                        print(f"[{arch_name}] observer frozen at epoch {epoch}")
                     except Exception as exc:
-                        print(f"[{arch_name}] WARNING: gagal freeze observer ({exc}), lanjut tanpa freeze")
+                        print(f"[{arch_name}] WARNING: failed to freeze observer ({exc})")
                 if freeze_bn_stats_epoch is not None and epoch == freeze_bn_stats_epoch:
                     try:
                         model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
-                        print(f"[{arch_name}] BatchNorm stats di-freeze di epoch {epoch}")
+                        print(f"[{arch_name}] BatchNorm stats frozen at epoch {epoch}")
                     except Exception as exc:
-                        print(f"[{arch_name}] WARNING: gagal freeze BN stats ({exc}), lanjut tanpa freeze")
+                        print(f"[{arch_name}] WARNING: failed to freeze BN stats ({exc})")
 
             t0 = time.time()
             train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
@@ -264,14 +244,11 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
 
             if epochs_without_improve >= patience:
                 if qat_requested and qat_supported and not qat_active and not qat_give_up:
-                    # jangan stop dulu - epoch berikutnya bakal ke-trigger blok
-                    # QAT-activation di atas (kondisi (b)) alih-alih beneran break.
-                    print(f"[{arch_name}] mau early-stop di epoch {epoch}, tapi QAT belum dicoba - lanjut ke fase QAT dulu")
+                    print(f"[{arch_name}] about to early-stop at epoch {epoch}, but QAT hasn't been tried - switching to QAT")
                 else:
-                    print(f"[{arch_name}] early stopping di epoch {epoch} (patience={patience})")
+                    print(f"[{arch_name}] early stopping at epoch {epoch} (patience={patience})")
                     break
 
-        # load bobot terbaik sebelum evaluasi final & logging model
         if best_state_dict is not None:
             model.load_state_dict(best_state_dict)
 
@@ -287,19 +264,14 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
             test_result["classification_report"], "test_classification_report.txt"
         )
 
-        # best checkpoint (.pt) sebagai artifact MLflow
         mlflow_utils.log_pt_checkpoint(best_ckpt_path, artifact_path="checkpoints")
 
-        # full model juga di-log lewat mlflow.pytorch supaya bisa langsung
-        # di-register / di-serve dari Databricks Model Registry. FX GraphModule
-        # (hasil QAT) kadang rewel soal pickling tergantung versi torch/mlflow
-        # -> jangan sampai gagalnya langkah ini menghapus semua metric run.
         import mlflow.pytorch
 
         try:
             mlflow.pytorch.log_model(model, artifact_path="model")
         except Exception as exc:
-            print(f"[{arch_name}] WARNING: mlflow.pytorch.log_model gagal ({exc}), lanjut tanpa full-model artifact")
+            print(f"[{arch_name}] WARNING: mlflow.pytorch.log_model failed ({exc})")
 
         if qat_active:
             _log_quantized_model(
@@ -307,7 +279,7 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
                 output_dir, qat_backend,
             )
 
-        print(f"[{arch_name}] selesai. best val_{monitor_metric}={best_score:.4f}")
+        print(f"[{arch_name}] done. best val_{monitor_metric}={best_score:.4f}")
 
 
 def _log_quantized_model(
@@ -319,13 +291,6 @@ def _log_quantized_model(
     output_dir: Path,
     backend: str,
 ) -> None:
-    """
-    Convert model hasil QAT (fake-quant) ke int8 asli, evaluasi di test set
-    (CPU, kernel quantized cuma jalan di CPU), lalu bandingkan size & akurasi
-    vs referensi fp32 -- ini metric yang sebenarnya relevan buat keputusan
-    "layak deploy edge atau tidak" (README.md, MobileNetV3 sebagai kandidat
-    edge deploy).
-    """
     quantized_model = convert_to_quantized(prepared_model)
     quant_test_result = evaluate(quantized_model, test_loader, torch.device("cpu"), class_names)
     quant_test_scalars = {f"test_quantized_{k}": v for k, v in quant_test_result["scalars"].items()}
@@ -355,17 +320,17 @@ def _log_quantized_model(
     mlflow_utils.log_pt_checkpoint(quantized_ckpt_path, artifact_path="checkpoints")
 
     print(
-        f"[{arch_name}] QAT selesai. quantized size={quant_size_mb:.2f}MB, "
+        f"[{arch_name}] QAT done. quantized size={quant_size_mb:.2f}MB, "
         f"test f1_macro (quantized)={quant_test_result['scalars']['f1_macro']:.4f}"
     )
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Training classification (Task A)")
-    parser.add_argument("--config", required=True, help="Path ke config yaml")
+    parser = argparse.ArgumentParser(description="Classification training (Task A)")
+    parser.add_argument("--config", required=True, help="Path to config yaml")
     parser.add_argument(
         "--architectures", nargs="*", default=None,
-        help="Override daftar arsitektur dari config (opsional)",
+        help="Override the architecture list from the config (optional)",
     )
     args = parser.parse_args()
 
@@ -379,7 +344,7 @@ def main():
 
     architectures = args.architectures or config["architectures"]
     for arch_name in architectures:
-        print(f"\n=== Training arsitektur: {arch_name} ===")
+        print(f"\n=== Training architecture: {arch_name} ===")
         train_one_architecture(arch_name, config, device)
 
 

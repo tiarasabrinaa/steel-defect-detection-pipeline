@@ -1,7 +1,5 @@
-# Skenario A4 (README.md bagian 3) - Gabungan union semua kelas, 20 kelas.
-# class_names di bawah HARUS sama persis (isi & urutan) dengan
-# src/class_mapping.py::CANONICAL_CLASSES -- jangan edit manual, kalau
-# mapping berubah, regenerate lewat scripts/build_combined_dataset.py.
+# Scenario A4 - union of all classes, 20 classes. class_names must match
+# src/class_mapping.py::CANONICAL_CLASSES exactly.
 experiment_name: "steel-defect/classification/combined"
 
 dataset:
@@ -45,28 +43,15 @@ scheduler:
   name: cosine
 
 loss:
-  weighted: true          # WAJIB true - lihat README.md bagian 4, kelas merged (inclusion/scratches)
-  label_smoothing: 0.1    # otomatis punya jauh lebih banyak sampel dibanding kelas unik per-dataset
+  weighted: true          # merged classes have more samples than dataset-unique ones
+  label_smoothing: 0.1
 
-# 20 kelas dengan imbalance paling parah di project ini (kelas merged -
-# Inclusion, Scratches - punya 2-3x sampel dibanding kelas unik per-dataset
-# seperti Waist Folding yang cuma dari GC10). loss.weighted saja tidak cukup
-# kalau head-nya cuma 1 Linear layer: kapasitas head yang lebih besar
-# (bottleneck 512-dim) + dropout dibutuhkan supaya model punya "ruang"
-# belajar representasi 20 kelas sebelum keputusan akhir, bukan langsung
-# collapse ke kelas dominan hasil merge.
 head:
   type: mlp
   hidden_dim: 512
   dropout: 0.3
   use_batchnorm: true
 
-# Sama seperti cls_gc10.yaml, disesuaikan ke epoch budget 60 (bukan 50):
-# 42 epoch pertama fp32 (proporsi warm-up sama, 70%), baru QAT di 18 epoch
-# terakhir. Skenario ini yang paling relevan buat "worth it gak deploy edge
-# model 20-kelas" - kalau accuracy_drop_f1_macro-nya besar di sini, itu
-# sinyal kelas hasil merge (Inclusion/Scratches) paling rawan kena noise
-# kuantisasi karena representasinya sudah dipaksa lebih general dari awal.
 quantization:
   enabled: true
   backend: qnnpack
