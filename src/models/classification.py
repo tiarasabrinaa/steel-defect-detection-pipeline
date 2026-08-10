@@ -73,7 +73,11 @@ def build_model(
 
     if head_type == "mlp":
         backbone = timm.create_model(timm_name, pretrained=pretrained, num_classes=0)
-        in_features = backbone.num_features
+        # backbone.num_features is unreliable for some architectures (e.g. MobileNetV3
+        # in timm reports the pre-conv_head channel count, not the actual pooled output
+        # dim) - probe the real output shape instead of trusting the metadata.
+        with torch.no_grad():
+            in_features = backbone(torch.zeros(1, 3, 224, 224)).shape[-1]
         head = MLPHead(
             in_features,
             num_classes,
