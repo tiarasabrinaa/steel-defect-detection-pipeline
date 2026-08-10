@@ -34,6 +34,9 @@ def init_mlflow(experiment_name: str) -> str:
 
     if tracking_uri:
         mlflow.set_tracking_uri(tracking_uri)
+    else:
+        # MLflow 3.x refuses the local ./mlruns file store unless this is set explicitly.
+        os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
 
     base_path = os.environ.get("MLFLOW_EXPERIMENT_BASE_PATH", "").rstrip("/")
     if tracking_uri == "databricks" and base_path:
