@@ -223,19 +223,26 @@ def train_rfdetr_architecture(arch_name: str, config: dict) -> None:
         print(f"[{arch_name}] done. test mAP50-95={scalars.get('test_mAP_50_95', float('nan')):.4f}")
 
 
-def train_one_epoch_torchvision(model, loader, optimizer, device) -> float:
+def train_one_epoch_torchvision(model, loader, optimizer, device, scaler) -> float:
     model.train()
+    use_amp = scaler.is_enabled()
     running_loss, n_samples = 0.0, 0
     for images, targets in tqdm(loader, desc="train", leave=False):
         images = [img.to(device) for img in images]
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
-        loss_dict = model(images, targets)
-        loss = sum(loss_dict.values())
-
         optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        optimizer.step()
+        with torch.autocast(device_type=device.type, enabled=use_amp):
+            loss_dict = model(images, targets)
+            loss = sum(loss_dict.values())
+
+        if use_amp:
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
 
         running_loss += loss.item() * len(images)
         n_samples += len(images)
@@ -359,9 +366,10 @@ def train_torchvision_architecture(arch_name: str, config: dict, device: torch.d
 
         best_score = -float("inf")
         best_state_dict = None
+        scaler = torch.amp.GradScaler(device.type, enabled=device.type == "cuda")
 
         for epoch in range(1, epochs + 1):
-            train_loss = train_one_epoch_torchvision(model, train_loader, optimizer, device)
+            train_loss = train_one_epoch_torchvision(model, train_loader, optimizer, device, scaler)
             val_result = evaluate_torchvision(model, val_loader, device, class_names)
             val_scalars = {f"val_{k}": v for k, v in val_result["scalars"].items()}
             scheduler.step()
