@@ -10,6 +10,7 @@ data/combined/**
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/combined/.gitkeep
+data/**
 
 # Training outputs
 results/**
