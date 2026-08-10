@@ -1,6 +1,6 @@
 # Stage 1: binary gate classifier, Defect vs Normal.
 # class_names order is [Normal, Defect].
-experiment_name: "steel-defect/classification/stage1_binary"
+experiment_name: "classification/stage1_binary"
 
 dataset:
   name: stage1_binary

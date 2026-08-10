@@ -1,6 +1,6 @@
 # Scenario A4 - union of all classes, 20 classes. class_names must match
 # src/class_mapping.py::CANONICAL_CLASSES exactly.
-experiment_name: "steel-defect/classification/combined"
+experiment_name: "classification/combined"
 
 dataset:
   name: combined

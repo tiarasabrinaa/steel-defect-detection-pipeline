@@ -1,5 +1,5 @@
 # Scenario B4 - GC10 + NEU-DET combined, 15 classes (X-SDD dropped, no bounding boxes).
-experiment_name: "steel-defect/detection/combined"
+experiment_name: "detection/combined"
 
 dataset:
   name: combined

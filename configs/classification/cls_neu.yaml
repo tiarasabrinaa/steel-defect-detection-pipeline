@@ -1,5 +1,5 @@
 # Scenario A2 (README.md section 3) - NEU-CLS only, 6 classes.
-experiment_name: "steel-defect/classification/neu_cls"
+experiment_name: "classification/neu_cls"
 
 dataset:
   name: neu_cls

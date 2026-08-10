@@ -1,5 +1,5 @@
 # Scenario B2 (README.md section 3) - NEU-DET only (not NEU-CLS), 6 classes.
-experiment_name: "steel-defect/detection/neu_det"
+experiment_name: "detection/neu_det"
 
 dataset:
   name: neu_det

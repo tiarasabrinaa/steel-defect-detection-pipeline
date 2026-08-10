@@ -1,5 +1,5 @@
 # Scenario A3 (README.md section 3) - X-SDD only, 7 classes.
-experiment_name: "steel-defect/classification/xsdd"
+experiment_name: "classification/xsdd"
 
 dataset:
   name: xsdd

@@ -1,5 +1,5 @@
 # Scenario A1 (README.md section 3) - GC10-DET only, 10 classes.
-experiment_name: "steel-defect/classification/gc10"
+experiment_name: "classification/gc10"
 
 dataset:
   name: gc10
