@@ -148,6 +148,7 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
         qat_active = False
         qat_give_up = False
         fp32_reference_state_dict = None
+        fp32_reference_score = None
 
         if qat_requested and not qat_supported:
             print(
@@ -172,6 +173,7 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
                 fp32_reference_state_dict = copy.deepcopy(
                     best_state_dict if best_state_dict is not None else model.state_dict()
                 )
+                fp32_reference_score = best_score
                 try:
                     example_images, _ = next(iter(train_loader))
                     model = prepare_qat_model(model, example_images[:1], backend=qat_backend).to(device)
@@ -252,6 +254,35 @@ def train_one_architecture(arch_name: str, config: dict, device: torch.device) -
                 else:
                     print(f"[{arch_name}] early stopping at epoch {epoch} (patience={patience})")
                     break
+
+        # QAT resets best_score/best_state_dict to retrain the head under fake-quantization;
+        # some architectures (e.g. MobileNetV3's depthwise convs + hard-swish) never recover
+        # to the pre-QAT accuracy within the remaining epochs. Falling back to the fp32
+        # checkpoint here guarantees the final model is never worse than before QAT started.
+        if (
+            qat_active
+            and fp32_reference_state_dict is not None
+            and (best_state_dict is None or best_score < fp32_reference_score)
+        ):
+            print(
+                f"[{arch_name}] QAT result (val_{monitor_metric}={best_score:.4f}) is worse than "
+                f"the pre-QAT checkpoint ({fp32_reference_score:.4f}); reverting to fp32."
+            )
+            best_state_dict = fp32_reference_state_dict
+            best_score = fp32_reference_score
+            qat_active = False
+            model = build_model(arch_name, num_classes, pretrained=False, head_cfg=config.get("head")).to(device)
+            model.load_state_dict(best_state_dict)
+            torch.save(
+                {
+                    "arch_name": arch_name,
+                    "num_classes": num_classes,
+                    "class_names": class_names,
+                    "state_dict": best_state_dict,
+                    f"val_{monitor_metric}": best_score,
+                },
+                best_ckpt_path,
+            )
 
         if best_state_dict is not None:
             model.load_state_dict(best_state_dict)
