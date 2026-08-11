@@ -1,6 +1,6 @@
-# Steel Surface Defect — Cascade Binary Classification + Detection Pipeline (v3, Prototype Phase)
+# Steel Surface Defect Detection — Cascade Pipeline (v3, Prototype)
 
-A two-stage pipeline: a fast binary classifier (Defect vs Normal) acts as an initial gate, followed by multi-class object detection only when a defect is detected. This is a prototype phase — no production camera has been finalized yet, so publicly available datasets are used as-is to build the pipeline mechanics. Calibration to the actual production camera setup follows once it is determined.
+Two-stage pipeline: a binary classifier (Defect / Normal) gates a multi-class detector, which only runs when a defect is found. Built on public datasets since the production camera isn't finalized yet — calibration happens once it is.
 
 ---
 
@@ -29,16 +29,16 @@ Raw Image
 
 ### Stage 1 — Binary Classification (Defect vs Normal)
 
-All datasets are used, with stratified sampling to balance the Defect and Normal classes.
+All datasets used, stratified to balance Defect vs Normal.
 
 | Source | Contribution to "Defect" | Contribution to "Normal" |
 |---|---|---|
 | GC10-DET | ✅ all images (defect-only dataset) | – |
 | NEU-CLS | ✅ all images (defect-only dataset) | – |
 | X-SDD | ✅ all images (defect-only dataset) | – |
-| Severstal | (optional, defective images can be added if more are needed) | ✅ defect-free subset (primary source for Normal) |
+| Severstal | optional, can add defective images if more are needed | ✅ defect-free subset (primary source for Normal) |
 
-**Balancing strategy:** the total "Defect" image count from GC10+NEU-CLS+X-SDD (~2,300+1,800+1,360 ≈ 5,460 images) is used as the target, and a matching number of "Normal" images is sampled from Severstal (stratified, not all available images, to avoid skewing the dataset). Implementation: `scripts/prepare_severstal.py` (stages defect-free Severstal images) → `scripts/build_stage1_binary.py` (assembles, balances, and splits into train/val/test per source so proportions are preserved across splits) → config `configs/classification/cls_stage1_binary.yaml`.
+**Balancing:** GC10 + NEU-CLS + X-SDD gives ~5,460 Defect images (2,300+1,800+1,360); a matching count of Normal images is sampled from Severstal (stratified, not the full pool, to avoid skew). Pipeline: `scripts/prepare_severstal.py` (stages defect-free Severstal images) → `scripts/build_stage1_binary.py` (assembles, balances, splits train/val/test per source) → `configs/classification/cls_stage1_binary.yaml`.
 
 ### Stage 2 — Object Detection (15 defect classes)
 
@@ -49,15 +49,15 @@ All datasets are used, with stratified sampling to balance the Defect and Normal
 | Severstal (defect-free subset) | Negative samples (anti-false-positive), ~10-15% of positive image count |
 | ~~X-SDD~~ | Not used — classification-only, no bounding boxes |
 
-Implementation: `configs/detection/det_combined.yaml` already matches this scenario (GC10-DET + NEU-DET union = 15 classes). Build the data with `scripts/build_combined_dataset.py --task detection --sources gc10=... neu_det=... --negatives_dir data/raw/severstal_clean --negative_ratio 0.12`. Negative samples are written as empty label files (0 objects), already handled by `YoloDetectionDataset` in `src/data_loader.py`.
+`configs/detection/det_combined.yaml` covers this scenario (GC10-DET + NEU-DET union = 15 classes). Build with `scripts/build_combined_dataset.py --task detection --sources gc10=... neu_det=... --negatives_dir data/raw/severstal_clean --negative_ratio 0.12`. Negatives are written as empty label files, handled by `YoloDetectionDataset` in `src/data_loader.py`.
 
 ---
 
 ## 3. Classes
 
-**Stage 1 (Classifier):** 2 classes — `Defect`, `Normal`
+**Stage 1:** 2 classes — `Defect`, `Normal`
 
-**Stage 2 (Detector):** 15 defect classes (union of GC10-DET and NEU-DET, "inclusion" merged):
+**Stage 2:** 15 classes (union of GC10-DET and NEU-DET, "inclusion" merged):
 
 | # | Class | Source |
 |---|---|---|
@@ -79,15 +79,13 @@ Implementation: `configs/detection/det_combined.yaml` already matches this scena
 
 ---
 
-## 4. Status: Prototype, Not Yet Calibrated to a Real Camera
+## 4. Status: Prototype, Not Calibrated to a Real Camera
 
-This is not a gap that needs resolving right now — it is a status note to carry forward once the production camera is determined.
+Every public steel defect dataset is close-range: defect features (fine cracks, small inclusions) need close range/high resolution to be visible and labelable, so these datasets are collected with line-scan cameras positioned close to the material.
 
-**Why every public steel defect dataset is close-up:** likely not a coincidence — defect features (fine cracks, small inclusions, etc.) require close range/high resolution to be visible and labelable, so academic datasets in this domain are typically collected with cameras positioned close to the material (line-scan cameras on production lines), not wide shots from a distance.
-
-**Once the production camera is determined:**
-- If it is also positioned close to the material (similar to an industrial line-scan setup) → the current data is likely already representative, no major changes needed.
-- If it is a wide/distant shot (e.g. a phone photo at uncontrolled distance) → real-camera samples will need to be collected for validation, and additional fine-tuning or augmentation (scale jitter, copy-pasting defect patches onto a wider background) may be needed before considering the pipeline production-ready.
+Once the production camera is picked:
+- **Close-range setup** (similar to industrial line-scan) → current data is likely representative, minor changes only.
+- **Wide/distant shot** (e.g. phone photo at uncontrolled distance) → need real-camera samples for validation, plus fine-tuning/augmentation (scale jitter, copy-pasting defect patches onto a wider background) before calling this production-ready.
 
 ---
 
@@ -105,29 +103,30 @@ This is not a gap that needs resolving right now — it is a status note to carr
 
 | Architecture | Notes |
 |---|---|
-| YOLOv8/YOLO11 (small/medium) | Primary candidates |
-| RT-DETR | Transformer-based alternative |
+| YOLOv8 / YOLO11 (small/medium) | Primary candidates |
+| RF-DETR | Transformer-based alternative |
 | Faster R-CNN (ResNet50-FPN) | Classic two-stage baseline |
-| RetinaNet | One-stage alternative |
+
+All four have trained checkpoints under `results/` (see section 8) — final pick is based on the metrics in section 7.
 
 ---
 
 ## 6. Trade-offs
 
-- **Error propagation** — a stage 1 false negative (a defect classified as "Normal") means the image never reaches stage 2. Recall is the most critical metric at stage 1.
-- **Not yet representative of the real camera scale** — see section 4; this is a known and tracked limitation, not an oversight.
-- **Stage 2 class imbalance** — GC10-DET contributes 10 of 15 classes, so NEU-DET-only classes have fewer samples. Weighted loss/oversampling is required.
-- **Stage 1 stratified sampling** — the Defect:Normal ratio must stay reasonably balanced, and the source distribution within the Defect class should also be checked (to avoid GC10 dominating simply because it has the most images).
-- **Latency budget** — stage 1 must be significantly faster than stage 2 for the cascade to be worthwhile.
+- **Error propagation** — a stage 1 false negative (defect classified as Normal) never reaches stage 2. Recall is the critical metric at stage 1.
+- **Not yet representative of the real camera scale** — see section 4, a known and tracked limitation.
+- **Stage 2 class imbalance** — GC10-DET contributes 10 of 15 classes, so NEU-DET-only classes have fewer samples. Needs weighted loss / oversampling.
+- **Stage 1 stratified sampling** — Defect:Normal ratio must stay balanced, and source distribution within Defect should be checked (GC10 shouldn't dominate just because it has the most images).
+- **Latency budget** — stage 1 must be significantly faster than stage 2 for the cascade to pay off.
 
 ---
 
 ## 7. Evaluation Metrics
 
 **Stage 1 (Binary Classification):**
-- Recall and precision for the Defect class (recall prioritized — false negatives are more costly than false positives)
+- Recall and precision for Defect (recall prioritized — false negatives cost more than false positives)
 - F1, confusion matrix
-- Recall breakdown by source dataset (GC10 vs NEU-CLS vs X-SDD), to check whether any source is harder to classify
+- Recall breakdown by source dataset (GC10 vs NEU-CLS vs X-SDD)
 - Inference latency (ms/image)
 
 **Stage 2 (Object Detection):**
@@ -139,11 +138,13 @@ This is not a gap that needs resolving right now — it is a status note to carr
 - Overall recall (raw image → box output)
 - Average total latency
 
+Run metrics (including `test_*`) are logged to Databricks Managed MLflow (`MLFLOW_EXPERIMENT_BASE_PATH` in `.env`), not committed to this repo.
+
 ---
 
 ## 8. Project Structure
 
-> Implementation note: `train_classification.py`/`train_detection.py` (a generic training loop already supporting arbitrary datasets and architectures via config) were intentionally **not** renamed or restructured — only new datasets and configs were added for stages 1/2, reusing the training scripts as-is. See the roadmap (section 9) for context.
+> `train_classification.py` / `train_detection.py` are generic training loops reused as-is for stages 1 and 2 — only new datasets and configs were added, no restructuring.
 
 ```
 steel-defect-detection/
@@ -184,7 +185,7 @@ steel-defect-detection/
 │   ├── prepare_data.py
 │   └── voc_to_yolo.py
 ├── notebooks/
-├── results/
+├── results/                    # trained checkpoints per architecture (classification/, detection/)
 ├── requirements.txt
 └── README.md
 ```
@@ -193,18 +194,18 @@ steel-defect-detection/
 
 ## 9. Roadmap
 
-1. Download GC10-DET, NEU-CLS, NEU-DET, X-SDD, and the defect-free Severstal subset (Severstal is a Kaggle **competition** dataset — requires a Kaggle account and accepting the competition rules before `kaggle competitions download` works)
-2. ✅ `scripts/prepare_severstal.py` — parses `train.csv` (handles both column format variants), stages defect-free images into `data/raw/severstal_clean/`
-3. ✅ `scripts/build_stage1_binary.py` — balances Defect vs Normal for stage 1 (per-source split, checks source distribution within the Defect class)
-4. ✅ `scripts/build_combined_dataset.py --negatives_dir` — folds Severstal negatives into stage 2 (~10-15% of positive image count, see section 6)
+1. ✅ Download GC10-DET, NEU-CLS, NEU-DET, X-SDD, and the defect-free Severstal subset (Severstal is a Kaggle **competition** dataset — needs a Kaggle account + accepting the competition rules before `kaggle competitions download` works)
+2. ✅ `scripts/prepare_severstal.py` — parses `train.csv` (both column format variants), stages defect-free images into `data/raw/severstal_clean/`
+3. ✅ `scripts/build_stage1_binary.py` — balances Defect vs Normal for stage 1 (per-source split, checks source distribution within Defect)
+4. ✅ `scripts/build_combined_dataset.py --negatives_dir` — folds Severstal negatives into stage 2 (~10-15% of positive image count, section 6)
 5. ✅ `src/class_mapping.py` — harmonizes the 15 stage 2 classes ("inclusion" merged)
-6. Train and compare stage 1 architectures (binary classifier) — `python -m src.train_classification --config configs/classification/cls_stage1_binary.yaml`, select based on Defect-class recall and latency
-7. Train and compare stage 2 architectures (detector, 15 classes) — `python -m src.train_detection --config configs/detection/det_combined.yaml --framework all`, select based on mAP and latency
-8. Build `src/pipeline.py` — chain: load the best stage 1 checkpoint, and if Defect, load the best stage 2 checkpoint and run it (not yet built)
+6. ✅ Train and compare stage 1 architectures — `python -m src.train_classification --config configs/classification/cls_stage1_binary.yaml`, checkpoints in `results/classification/stage1_binary/`
+7. ✅ Train and compare stage 2 architectures — `python -m src.train_detection --config configs/detection/det_combined.yaml --framework all`, checkpoints in `results/detection/combined/`
+8. Pick final architecture per stage (recall/mAP vs latency, section 7) and build `src/pipeline.py` — chain: stage 1 checkpoint, and if Defect, stage 2 checkpoint (not yet built)
 9. Run end-to-end tests with the currently available data (still public datasets, not the real camera)
-10. **Key checkpoint:** once the production camera is determined, collect real-camera samples, re-validate model accuracy at that scale (section 4), fine-tune/calibrate as needed
+10. **Key checkpoint:** once the production camera is determined, collect real-camera samples, re-validate accuracy at that scale (section 4), fine-tune/calibrate as needed
 
-> This repository's scope ends at the trained checkpoints (`.pt`) for stages 1 and 2, plus `pipeline.py` for local end-to-end testing. Integration into a web app or API is a separate downstream consumer of these models, not part of this repository.
+> This repository's scope ends at the trained checkpoints (`.pt`) for stages 1 and 2, plus `pipeline.py` for local end-to-end testing. Integration into a web app or API is a separate downstream consumer, not part of this repository.
 
 ---
 
