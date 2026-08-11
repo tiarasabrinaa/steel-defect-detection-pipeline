@@ -1,0 +1,523 @@
+Creating new Ultralytics Settings v0.0.7 file ✅ 
+View Ultralytics Settings with 'yolo settings' or at '/root/.config/Ultralytics/settings.json'
+Update Settings with 'yolo settings key=value', i.e. 'yolo settings runs_dir=path/to/dir'. For help see https://docs.ultralytics.com/quickstart/#ultralytics-settings.
+[1;38;5;208mIf you are using MLflow Tracing, you can migrate your traces to Unity Catalog for unlimited storage, fine-grained access controls, and queryability from notebooks, SQL, and dashboards. [94mLearn more: https://docs.databricks.com/aws/en/mlflow3/genai/tracing/migrate-traces-to-uc[0m
+Device: cuda
+
+=== [rfdetr] Training architecture: rfdetr-medium ===
+[2026-08-11 00:17:21] [INFO] rf-detr - Downloading pretrained weights for /root/.roboflow/models/rf-detr-medium.pth
+/root/.roboflow/models/rf-detr-medium.pth:   0%|          | 0.00/386M [00:00<?, ?iB/s]/root/.roboflow/models/rf-detr-medium.pth:   1%|          | 2.01M/386M [00:00<00:19, 21.1MiB/s]/root/.roboflow/models/rf-detr-medium.pth:   3%|▎         | 9.69M/386M [00:00<00:07, 56.0MiB/s]/root/.roboflow/models/rf-detr-medium.pth:   5%|▍         | 19.0M/386M [00:00<00:05, 75.1MiB/s]/root/.roboflow/models/rf-detr-medium.pth:   7%|▋         | 26.2M/386M [00:00<00:06, 57.0MiB/s]/root/.roboflow/models/rf-detr-medium.pth:   9%|▉         | 35.6M/386M [00:00<00:05, 69.6MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  12%|█▏        | 47.1M/386M [00:00<00:04, 84.7MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  15%|█▌        | 58.3M/386M [00:00<00:03, 94.5MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  18%|█▊        | 69.5M/386M [00:00<00:03, 102MiB/s] /root/.roboflow/models/rf-detr-medium.pth:  21%|██        | 81.1M/386M [00:00<00:02, 108MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  24%|██▍       | 92.9M/386M [00:01<00:02, 112MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  27%|██▋       | 106M/386M [00:01<00:02, 119MiB/s] /root/.roboflow/models/rf-detr-medium.pth:  31%|███       | 118M/386M [00:01<00:02, 123MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  34%|███▎      | 130M/386M [00:01<00:02, 122MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  37%|███▋      | 142M/386M [00:01<00:02, 122MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  40%|███▉      | 154M/386M [00:01<00:01, 123MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  43%|████▎     | 165M/386M [00:01<00:01, 122MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  46%|████▌     | 177M/386M [00:01<00:01, 122MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  49%|████▉     | 189M/386M [00:01<00:01, 121MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  52%|█████▏    | 200M/386M [00:01<00:01, 121MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  55%|█████▍    | 212M/386M [00:02<00:01, 121MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  58%|█████▊    | 223M/386M [00:02<00:01, 121MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  61%|██████    | 235M/386M [00:02<00:01, 122MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  64%|██████▍   | 247M/386M [00:02<00:01, 122MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  67%|██████▋   | 259M/386M [00:02<00:01, 122MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  70%|███████   | 271M/386M [00:02<00:00, 123MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  73%|███████▎  | 282M/386M [00:02<00:00, 122MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  76%|███████▌  | 294M/386M [00:02<00:00, 123MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  79%|███████▉  | 306M/386M [00:02<00:00, 123MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  82%|████████▏ | 318M/386M [00:02<00:00, 123MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  85%|████████▌ | 330M/386M [00:03<00:00, 124MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  88%|████████▊ | 342M/386M [00:03<00:00, 125MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  92%|█████████▏| 354M/386M [00:03<00:00, 125MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  95%|█████████▍| 366M/386M [00:03<00:00, 124MiB/s]/root/.roboflow/models/rf-detr-medium.pth:  98%|█████████▊| 378M/386M [00:03<00:00, 125MiB/s]/root/.roboflow/models/rf-detr-medium.pth: 100%|██████████| 386M/386M [00:03<00:00, 114MiB/s]
+[2026-08-11 00:17:25] [INFO] rf-detr - MD5 validation successful for /root/.roboflow/models/rf-detr-medium.pth
+[2026-08-11 00:17:25] [WARNING] rf-detr - Using a different number of positional encodings than DINOv2, which means we're not loading DINOv2 backbone weights. This is not a problem if finetuning a pretrained RF-DETR model.
+[2026-08-11 00:17:25] [WARNING] rf-detr - Using patch size 16 instead of 14, which means we're not loading DINOv2 backbone weights. This is not a problem if finetuning a pretrained RF-DETR model.
+[2026-08-11 00:17:29] [INFO] rf-detr - File /root/.roboflow/models/rf-detr-medium.pth already exists with correct MD5 hash.
+[2026-08-11 00:17:31] [WARNING] rf-detr - Pretrained weights at '/root/.roboflow/models/rf-detr-medium.pth' loaded only partially — this typically produces lower accuracy. 1 model parameter(s) not in checkpoint (left at random init): [_kp_active_mask]. Check that the model configuration (encoder, hidden_dim, out_feature_indexes, projector_scale, ...) matches the architecture the checkpoint was trained with.
+[2026-08-11 00:17:31] [WARNING] rf-detr - Using a different number of positional encodings than DINOv2, which means we're not loading DINOv2 backbone weights. This is not a problem if finetuning a pretrained RF-DETR model.
+[2026-08-11 00:17:31] [WARNING] rf-detr - Using patch size 16 instead of 14, which means we're not loading DINOv2 backbone weights. This is not a problem if finetuning a pretrained RF-DETR model.
+[2026-08-11 00:17:33] [INFO] rf-detr - File /root/.roboflow/models/rf-detr-medium.pth already exists with correct MD5 hash.
+[2026-08-11 00:17:34] [WARNING] rf-detr - Checkpoint has 90 classes but model is configured for 15. The detection head will be re-initialized to 15 classes.
+[2026-08-11 00:17:34] [WARNING] rf-detr - Pretrained weights at '/root/.roboflow/models/rf-detr-medium.pth' loaded only partially — this typically produces lower accuracy. 1 model parameter(s) not in checkpoint (left at random init): [_kp_active_mask]. Check that the model configuration (encoder, hidden_dim, out_feature_indexes, projector_scale, ...) matches the architecture the checkpoint was trained with.
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+[2026-08-11 00:17:35] [INFO] rf-detr - Building Roboflow train dataset with square resize at resolution 576
+[2026-08-11 00:17:35] [INFO] rf-detr - Using multi-scale training with square resize and scales: [736]
+/usr/local/lib/python3.11/dist-packages/rfdetr/datasets/coco.py:1090: UserWarning: RF-DETR has changed the default training augmentation backend from Albumentations (cv2 INTER_LINEAR, no antialias) to torchvision (BILINEAR + antialias=True). Pixel values will differ slightly from previous versions; mAP may drift on existing benchmarks. To restore the previous behaviour, install rfdetr[augment] and pass aug_config=AUG_CONFIG from rfdetr.datasets.aug_configs.
+  transforms=make_coco_transforms_square_div_64(
+loading annotations into memory...
+Done (t=0.02s)
+creating index...
+index created!
+[2026-08-11 00:17:35] [INFO] rf-detr - Building Roboflow val dataset with square resize at resolution 576
+[2026-08-11 00:17:35] [INFO] rf-detr - Using multi-scale training with square resize and scales: [736]
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+/usr/local/lib/python3.11/dist-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+loading annotations into memory...
+Done (t=0.02s)
+creating index...
+index created!
+/usr/local/lib/python3.11/dist-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name        ┃ Type         ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model       │ LWDETR       │ 33.4 M │ train │     0 │
+│ 1 │ criterion   │ SetCriterion │      0 │ train │     0 │
+│ 2 │ postprocess │ PostProcess  │      0 │ train │     0 │
+└───┴─────────────┴──────────────┴────────┴───────┴───────┘
+Trainable params: 33.4 M                                                        
+Non-trainable params: 0                                                         
+Total params: 33.4 M                                                            
+Total estimated model params size (MB): 133.670                                 
+Modules in train mode: 483                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+Seed set to 42
+              Val [1m([0mEpoch [1;36m1[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.0756[0m │ [1;36m0.2508[0m │ [1;36m0.0474[0m │ [1;36m0.2500[0m │ [1;36m0.2222[0m │ [1;36m0.3333[0m │ [1;36m0.1667[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m              Val (Epoch 1/120) — Per-class Metrics               [0m
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass       [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2mcrescent_gap[0m[2m [0m│   0.0000 │ 0.0000 │ 0.0000 │    0.0000 │ 0.0000 │
+│[2m [0m[2mwater_spot  [0m[2m [0m│   0.2268 │ 0.7500 │ 0.6667 │    1.0000 │ 0.5000 │
+│[2m [0m[2msilk_spot   [0m[2m [0m│   0.0000 │ 0.0000 │ 0.0000 │    0.0000 │ 0.0000 │
+└──────────────┴──────────┴────────┴────────┴───────────┴────────┘
+[2026-08-11 00:17:39] [INFO] rf-detr - Best EMA mAP improved to 0.0618 (epoch 0)
+              Val [1m([0mEpoch [1;36m1[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.2991[0m │ [1;36m0.5776[0m │ [1;36m0.2654[0m │ [1;36m0.5946[0m │ [1;36m0.5487[0m │ [1;36m0.5825[0m │ [1;36m0.5685[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 1/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.2203 │ 0.6188 │ 0.4587 │    0.4082 │ 0.5236 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5292 │ 0.7560 │ 0.7586 │    0.6471 │ 0.9167 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.0715 │ 0.6009 │ 0.2317 │    0.3333 │ 0.1776 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.4614 │ 0.7266 │ 0.7151 │    0.5953 │ 0.8951 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.4254 │ 0.8426 │ 0.6767 │    0.6250 │ 0.7377 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.2148 │ 0.6881 │ 0.4245 │    0.3516 │ 0.5357 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5024 │ 0.6444 │ 0.9130 │    0.8936 │ 0.9333 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.4634 │ 0.6421 │ 0.9193 │    0.8706 │ 0.9737 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.5770 │ 0.7364 │ 0.8958 │    0.8269 │ 0.9773 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4182 │ 0.6404 │ 0.7475 │    0.7872 │ 0.7115 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2162 │ 0.4509 │ 0.3597 │    0.9259 │ 0.2232 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.1534 │ 0.5452 │ 0.4233 │    0.6154 │ 0.3226 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.0027 │ 0.2476 │ 0.0000 │    0.0000 │ 0.0000 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2177 │ 0.5500 │ 0.7059 │    0.8571 │ 0.6000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.0132 │ 0.2286 │ 0.0000 │    0.0000 │ 0.0000 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved. New best score: 0.314
+[2026-08-11 00:26:31] [INFO] rf-detr - Best regular checkpoint saved to /workspace/steel-defect-detection-pipeline/results/detection/combined/rfdetr-medium/checkpoint_best_regular.pth (epoch 0, monitor=val/mAP_50_95, value=0.299125)
+[2026-08-11 00:26:32] [INFO] rf-detr - Best EMA mAP improved to 0.3136 (epoch 0)
+              Val [1m([0mEpoch [1;36m2[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.3333[0m │ [1;36m0.6457[0m │ [1;36m0.2797[0m │ [1;36m0.6297[0m │ [1;36m0.5763[0m │ [1;36m0.5965[0m │ [1;36m0.6102[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 2/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.2940 │ 0.6089 │ 0.4829 │    0.3681 │ 0.7016 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5527 │ 0.7298 │ 0.8457 │    0.8132 │ 0.8810 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1427 │ 0.6533 │ 0.2794 │    0.6552 │ 0.1776 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5790 │ 0.7510 │ 0.7535 │    0.6333 │ 0.9301 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.3910 │ 0.8131 │ 0.7143 │    0.7843 │ 0.6557 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.2376 │ 0.6940 │ 0.4815 │    0.3495 │ 0.7738 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5237 │ 0.6111 │ 0.8842 │    0.8400 │ 0.9333 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5008 │ 0.6711 │ 0.9250 │    0.8810 │ 0.9737 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.5026 │ 0.6818 │ 0.8958 │    0.8269 │ 0.9773 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4623 │ 0.6519 │ 0.7455 │    0.7069 │ 0.7885 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2594 │ 0.4429 │ 0.5814 │    0.8333 │ 0.4464 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.1063 │ 0.5702 │ 0.3881 │    0.5065 │ 0.3145 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.0326 │ 0.7524 │ 0.0000 │    0.0000 │ 0.0000 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.3199 │ 0.5500 │ 0.6667 │    0.7500 │ 0.6000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.0956 │ 0.2643 │ 0.0000 │    0.0000 │ 0.0000 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.041 >= min_delta = 0.001. New best score: 0.355
+[2026-08-11 00:37:04] [INFO] rf-detr - Best regular checkpoint saved to /workspace/steel-defect-detection-pipeline/results/detection/combined/rfdetr-medium/checkpoint_best_regular.pth (epoch 1, monitor=val/mAP_50_95, value=0.333333)
+[2026-08-11 00:37:05] [INFO] rf-detr - Best EMA mAP improved to 0.3551 (epoch 1)
+              Val [1m([0mEpoch [1;36m3[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.3593[0m │ [1;36m0.6981[0m │ [1;36m0.3158[0m │ [1;36m0.6227[0m │ [1;36m0.6581[0m │ [1;36m0.6696[0m │ [1;36m0.6776[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 3/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3609 │ 0.6099 │ 0.6441 │    0.5652 │ 0.7487 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5681 │ 0.7440 │ 0.8333 │    0.7812 │ 0.8929 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1276 │ 0.6224 │ 0.3625 │    0.5472 │ 0.2710 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5317 │ 0.7336 │ 0.8062 │    0.7198 │ 0.9161 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.4707 │ 0.8115 │ 0.7059 │    0.7241 │ 0.6885 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.2760 │ 0.6440 │ 0.5561 │    0.5049 │ 0.6190 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5169 │ 0.6156 │ 0.9149 │    0.8776 │ 0.9556 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5059 │ 0.6526 │ 0.9193 │    0.8706 │ 0.9737 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.5887 │ 0.7227 │ 0.9053 │    0.8431 │ 0.9773 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4230 │ 0.6365 │ 0.6370 │    0.5181 │ 0.8269 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2791 │ 0.4714 │ 0.6389 │    0.6635 │ 0.6161 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.1216 │ 0.5194 │ 0.4426 │    0.4500 │ 0.4355 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.2337 │ 0.6762 │ 0.4000 │    0.6667 │ 0.2857 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2538 │ 0.5300 │ 0.7059 │    0.8571 │ 0.6000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1318 │ 0.3500 │ 0.4000 │    0.4545 │ 0.3571 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.025 >= min_delta = 0.001. New best score: 0.380
+[2026-08-11 00:47:51] [INFO] rf-detr - Best regular checkpoint saved to /workspace/steel-defect-detection-pipeline/results/detection/combined/rfdetr-medium/checkpoint_best_regular.pth (epoch 2, monitor=val/mAP_50_95, value=0.3593)
+[2026-08-11 00:47:52] [INFO] rf-detr - Best EMA mAP improved to 0.3797 (epoch 2)
+              Val [1m([0mEpoch [1;36m4[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.3742[0m │ [1;36m0.7175[0m │ [1;36m0.3289[0m │ [1;36m0.6208[0m │ [1;36m0.6764[0m │ [1;36m0.6949[0m │ [1;36m0.7003[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 4/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3827 │ 0.6079 │ 0.6402 │    0.5534 │ 0.7592 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5856 │ 0.7381 │ 0.8621 │    0.8333 │ 0.8929 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1428 │ 0.6411 │ 0.3814 │    0.3488 │ 0.4206 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5799 │ 0.7462 │ 0.8013 │    0.7299 │ 0.8881 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.4104 │ 0.8066 │ 0.6102 │    0.6316 │ 0.5902 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.2656 │ 0.7000 │ 0.5333 │    0.4444 │ 0.6667 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5600 │ 0.6400 │ 0.9362 │    0.8980 │ 0.9778 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.4778 │ 0.6461 │ 0.9241 │    0.8902 │ 0.9605 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.5654 │ 0.6750 │ 0.8980 │    0.8148 │ 1.0000 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4368 │ 0.6250 │ 0.7885 │    0.7885 │ 0.7885 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2984 │ 0.4607 │ 0.6552 │    0.6333 │ 0.6786 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.1876 │ 0.5363 │ 0.5046 │    0.5851 │ 0.4435 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.2499 │ 0.7476 │ 0.3846 │    1.0000 │ 0.2381 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.3171 │ 0.4200 │ 0.6667 │    0.6364 │ 0.7000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1536 │ 0.3214 │ 0.5600 │    0.6364 │ 0.5000 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.014 >= min_delta = 0.001. New best score: 0.394
+[2026-08-11 00:58:31] [INFO] rf-detr - Best regular checkpoint saved to /workspace/steel-defect-detection-pipeline/results/detection/combined/rfdetr-medium/checkpoint_best_regular.pth (epoch 3, monitor=val/mAP_50_95, value=0.374247)
+[2026-08-11 00:58:32] [INFO] rf-detr - Best EMA mAP improved to 0.3936 (epoch 3)
+              Val [1m([0mEpoch [1;36m5[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.3802[0m │ [1;36m0.7091[0m │ [1;36m0.3402[0m │ [1;36m0.6435[0m │ [1;36m0.6704[0m │ [1;36m0.7199[0m │ [1;36m0.6628[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 5/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3646 │ 0.6084 │ 0.6601 │    0.6193 │ 0.7068 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5825 │ 0.7381 │ 0.8444 │    0.7917 │ 0.9048 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1473 │ 0.6813 │ 0.2187 │    0.6667 │ 0.1308 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5602 │ 0.7531 │ 0.8052 │    0.7515 │ 0.8671 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.4758 │ 0.8590 │ 0.6825 │    0.6615 │ 0.7049 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3132 │ 0.7048 │ 0.5780 │    0.5618 │ 0.5952 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5176 │ 0.6289 │ 0.9130 │    0.8936 │ 0.9333 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5149 │ 0.6895 │ 0.9427 │    0.9136 │ 0.9737 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.5967 │ 0.7227 │ 0.8958 │    0.8269 │ 0.9773 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4047 │ 0.5962 │ 0.7961 │    0.8039 │ 0.7885 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2834 │ 0.4786 │ 0.6574 │    0.6827 │ 0.6339 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2091 │ 0.5298 │ 0.5070 │    0.6067 │ 0.4355 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.3159 │ 0.7619 │ 0.5882 │    0.7692 │ 0.4762 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2839 │ 0.5000 │ 0.6667 │    0.7500 │ 0.6000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1328 │ 0.4000 │ 0.3000 │    0.5000 │ 0.2143 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.008 >= min_delta = 0.001. New best score: 0.402
+[2026-08-11 01:09:14] [INFO] rf-detr - Best regular checkpoint saved to /workspace/steel-defect-detection-pipeline/results/detection/combined/rfdetr-medium/checkpoint_best_regular.pth (epoch 4, monitor=val/mAP_50_95, value=0.380171)
+[2026-08-11 01:09:15] [INFO] rf-detr - Best EMA mAP improved to 0.4016 (epoch 4)
+              Val [1m([0mEpoch [1;36m6[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.3885[0m │ [1;36m0.7253[0m │ [1;36m0.3626[0m │ [1;36m0.6328[0m │ [1;36m0.6649[0m │ [1;36m0.6359[0m │ [1;36m0.7341[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 6/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3502 │ 0.6215 │ 0.6034 │    0.5053 │ 0.7487 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.6081 │ 0.7381 │ 0.8603 │    0.8105 │ 0.9167 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1277 │ 0.6710 │ 0.2968 │    0.4792 │ 0.2150 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5916 │ 0.7469 │ 0.8047 │    0.6974 │ 0.9510 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.5236 │ 0.8311 │ 0.6494 │    0.5376 │ 0.8197 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3093 │ 0.7179 │ 0.4595 │    0.3156 │ 0.8452 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5138 │ 0.5867 │ 0.9362 │    0.8980 │ 0.9778 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5008 │ 0.6500 │ 0.9241 │    0.8902 │ 0.9605 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.6268 │ 0.7432 │ 0.9167 │    0.8462 │ 1.0000 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4210 │ 0.5923 │ 0.7547 │    0.7407 │ 0.7692 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2850 │ 0.4625 │ 0.6354 │    0.5333 │ 0.7857 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.1750 │ 0.5565 │ 0.5057 │    0.4752 │ 0.5403 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.3981 │ 0.7381 │ 0.5946 │    0.6875 │ 0.5238 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2701 │ 0.5000 │ 0.6316 │    0.6667 │ 0.6000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1258 │ 0.3357 │ 0.4000 │    0.4545 │ 0.3571 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.007 >= min_delta = 0.001. New best score: 0.408
+[2026-08-11 01:20:02] [INFO] rf-detr - Best regular checkpoint saved to /workspace/steel-defect-detection-pipeline/results/detection/combined/rfdetr-medium/checkpoint_best_regular.pth (epoch 5, monitor=val/mAP_50_95, value=0.388468)
+[2026-08-11 01:20:02] [INFO] rf-detr - Best EMA mAP improved to 0.4081 (epoch 5)
+              Val [1m([0mEpoch [1;36m7[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.4031[0m │ [1;36m0.7371[0m │ [1;36m0.3856[0m │ [1;36m0.6386[0m │ [1;36m0.7088[0m │ [1;36m0.7923[0m │ [1;36m0.6728[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 7/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3682 │ 0.6005 │ 0.6856 │    0.6751 │ 0.6963 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.6076 │ 0.7488 │ 0.8902 │    0.8652 │ 0.9167 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1497 │ 0.6757 │ 0.2899 │    0.6452 │ 0.1869 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5765 │ 0.7622 │ 0.8699 │    0.8523 │ 0.8881 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.4993 │ 0.8557 │ 0.6792 │    0.8000 │ 0.5902 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.2594 │ 0.7143 │ 0.5275 │    0.4898 │ 0.5714 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5686 │ 0.6200 │ 0.9247 │    0.8958 │ 0.9556 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5077 │ 0.6645 │ 0.9419 │    0.9241 │ 0.9605 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.6124 │ 0.6977 │ 0.9462 │    0.8980 │ 1.0000 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4360 │ 0.6212 │ 0.8163 │    0.8696 │ 0.7692 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2996 │ 0.4321 │ 0.7081 │    0.7629 │ 0.6607 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2200 │ 0.5540 │ 0.5126 │    0.6800 │ 0.4113 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.4036 │ 0.7667 │ 0.5625 │    0.8182 │ 0.4286 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.3564 │ 0.5300 │ 0.7778 │    0.8750 │ 0.7000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1813 │ 0.3357 │ 0.5000 │    0.8333 │ 0.3571 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.009 >= min_delta = 0.001. New best score: 0.418
+[2026-08-11 01:30:47] [INFO] rf-detr - Best regular checkpoint saved to /workspace/steel-defect-detection-pipeline/results/detection/combined/rfdetr-medium/checkpoint_best_regular.pth (epoch 6, monitor=val/mAP_50_95, value=0.403084)
+[2026-08-11 01:30:48] [INFO] rf-detr - Best EMA mAP improved to 0.4175 (epoch 6)
+              Val [1m([0mEpoch [1;36m8[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.3888[0m │ [1;36m0.7146[0m │ [1;36m0.3723[0m │ [1;36m0.6167[0m │ [1;36m0.6496[0m │ [1;36m0.7392[0m │ [1;36m0.6360[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 8/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3716 │ 0.5859 │ 0.6873 │    0.6786 │ 0.6963 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5989 │ 0.7298 │ 0.8197 │    0.7576 │ 0.8929 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1498 │ 0.6776 │ 0.2016 │    0.5909 │ 0.1215 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.6058 │ 0.7552 │ 0.8302 │    0.7543 │ 0.9231 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.5202 │ 0.8115 │ 0.6916 │    0.8043 │ 0.6066 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3568 │ 0.7179 │ 0.5946 │    0.5446 │ 0.6548 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5141 │ 0.5933 │ 0.9462 │    0.9167 │ 0.9778 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.4956 │ 0.6395 │ 0.9427 │    0.9136 │ 0.9737 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.5841 │ 0.6932 │ 0.9032 │    0.8571 │ 0.9545 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4408 │ 0.5788 │ 0.8261 │    0.9500 │ 0.7308 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2868 │ 0.4616 │ 0.6109 │    0.5153 │ 0.7500 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2251 │ 0.5234 │ 0.5392 │    0.6875 │ 0.4435 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.3909 │ 0.7190 │ 0.5625 │    0.8182 │ 0.4286 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.1514 │ 0.4000 │ 0.1667 │    0.5000 │ 0.1000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1406 │ 0.3643 │ 0.4211 │    0.8000 │ 0.2857 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.006 >= min_delta = 0.001. New best score: 0.424
+[2026-08-11 01:41:25] [INFO] rf-detr - Best EMA mAP improved to 0.4236 (epoch 7)
+              Val [1m([0mEpoch [1;36m9[0m/[1;36m120[0m[1m)[0m — Overall Metrics               
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.4004[0m │ [1;36m0.7276[0m │ [1;36m0.3967[0m │ [1;36m0.6346[0m │ [1;36m0.6868[0m │ [1;36m0.6734[0m │ [1;36m0.7219[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m                Val (Epoch 9/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3849 │ 0.6168 │ 0.6339 │    0.5525 │ 0.7435 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.6311 │ 0.7536 │ 0.8495 │    0.7745 │ 0.9405 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1373 │ 0.6477 │ 0.3377 │    0.5532 │ 0.2430 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5586 │ 0.7448 │ 0.8088 │    0.7330 │ 0.9021 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.5054 │ 0.8541 │ 0.7188 │    0.6866 │ 0.7541 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3234 │ 0.6690 │ 0.5700 │    0.4914 │ 0.6786 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5591 │ 0.6111 │ 0.9362 │    0.8980 │ 0.9778 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5328 │ 0.6645 │ 0.9125 │    0.8690 │ 0.9605 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.5818 │ 0.7114 │ 0.9072 │    0.8302 │ 1.0000 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4417 │ 0.6365 │ 0.8085 │    0.9048 │ 0.7308 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.3000 │ 0.4821 │ 0.6519 │    0.5570 │ 0.7857 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2149 │ 0.5500 │ 0.5234 │    0.5076 │ 0.5403 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.5006 │ 0.7905 │ 0.6486 │    0.7500 │ 0.5714 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2331 │ 0.4800 │ 0.4762 │    0.4545 │ 0.5000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1020 │ 0.3071 │ 0.5185 │    0.5385 │ 0.5000 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.004 >= min_delta = 0.001. New best score: 0.427
+[2026-08-11 01:52:11] [INFO] rf-detr - Best EMA mAP improved to 0.4274 (epoch 8)
+              Val [1m([0mEpoch [1;36m10[0m/[1;36m120[0m[1m)[0m — Overall Metrics              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.4149[0m │ [1;36m0.7691[0m │ [1;36m0.3982[0m │ [1;36m0.6266[0m │ [1;36m0.7298[0m │ [1;36m0.7437[0m │ [1;36m0.7265[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m               Val (Epoch 10/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3949 │ 0.6000 │ 0.7169 │    0.7113 │ 0.7225 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5904 │ 0.7345 │ 0.8353 │    0.8256 │ 0.8452 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1929 │ 0.6682 │ 0.4615 │    0.5114 │ 0.4206 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5793 │ 0.7622 │ 0.8630 │    0.8456 │ 0.8811 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.5138 │ 0.8213 │ 0.7132 │    0.6765 │ 0.7541 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3656 │ 0.6952 │ 0.6545 │    0.6667 │ 0.6429 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5410 │ 0.6267 │ 0.9556 │    0.9556 │ 0.9556 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5383 │ 0.6487 │ 0.9419 │    0.9241 │ 0.9605 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.6070 │ 0.7500 │ 0.9053 │    0.8431 │ 0.9773 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4454 │ 0.6115 │ 0.7679 │    0.7167 │ 0.8269 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.3109 │ 0.4732 │ 0.7265 │    0.6692 │ 0.7946 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2487 │ 0.5298 │ 0.6038 │    0.7273 │ 0.5161 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.4726 │ 0.7000 │ 0.6486 │    0.7500 │ 0.5714 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2451 │ 0.4200 │ 0.6316 │    0.6667 │ 0.6000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1782 │ 0.3571 │ 0.5217 │    0.6667 │ 0.4286 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.005 >= min_delta = 0.001. New best score: 0.432
+[2026-08-11 02:03:03] [INFO] rf-detr - Best regular checkpoint saved to /workspace/steel-defect-detection-pipeline/results/detection/combined/rfdetr-medium/checkpoint_best_regular.pth (epoch 9, monitor=val/mAP_50_95, value=0.414947)
+[2026-08-11 02:03:04] [INFO] rf-detr - Best EMA mAP improved to 0.4320 (epoch 9)
+              Val [1m([0mEpoch [1;36m11[0m/[1;36m120[0m[1m)[0m — Overall Metrics              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.4109[0m │ [1;36m0.7351[0m │ [1;36m0.4016[0m │ [1;36m0.6321[0m │ [1;36m0.6921[0m │ [1;36m0.7927[0m │ [1;36m0.6655[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m               Val (Epoch 11/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3999 │ 0.6068 │ 0.7240 │    0.7202 │ 0.7277 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5734 │ 0.7107 │ 0.8452 │    0.8452 │ 0.8452 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1583 │ 0.6710 │ 0.1774 │    0.6471 │ 0.1028 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5887 │ 0.7531 │ 0.8732 │    0.8794 │ 0.8671 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.5047 │ 0.8393 │ 0.7368 │    0.7925 │ 0.6885 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3188 │ 0.7143 │ 0.5414 │    0.7347 │ 0.4286 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5953 │ 0.6356 │ 0.9362 │    0.8980 │ 0.9778 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5365 │ 0.6474 │ 0.9419 │    0.9241 │ 0.9605 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.6458 │ 0.7455 │ 0.9167 │    0.8462 │ 1.0000 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4713 │ 0.6423 │ 0.8542 │    0.9318 │ 0.7885 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2710 │ 0.4473 │ 0.6696 │    0.6525 │ 0.6875 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2263 │ 0.5444 │ 0.5408 │    0.7361 │ 0.4274 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.4002 │ 0.7476 │ 0.7000 │    0.7368 │ 0.6667 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.3695 │ 0.4900 │ 0.5714 │    0.5455 │ 0.6000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1038 │ 0.2857 │ 0.3529 │    1.0000 │ 0.2143 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+              Val [1m([0mEpoch [1;36m12[0m/[1;36m120[0m[1m)[0m — Overall Metrics              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.4012[0m │ [1;36m0.7273[0m │ [1;36m0.3951[0m │ [1;36m0.6420[0m │ [1;36m0.6623[0m │ [1;36m0.6687[0m │ [1;36m0.6962[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m               Val (Epoch 12/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3876 │ 0.6314 │ 0.6773 │    0.6016 │ 0.7749 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5586 │ 0.7250 │ 0.8208 │    0.7978 │ 0.8452 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1395 │ 0.7056 │ 0.2329 │    0.4359 │ 0.1589 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5811 │ 0.7615 │ 0.8418 │    0.7688 │ 0.9301 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.5198 │ 0.8705 │ 0.6857 │    0.6076 │ 0.7869 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3177 │ 0.7048 │ 0.5400 │    0.4655 │ 0.6429 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5450 │ 0.6400 │ 0.9348 │    0.9149 │ 0.9556 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5377 │ 0.6461 │ 0.9554 │    0.9259 │ 0.9868 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.6462 │ 0.7523 │ 0.9167 │    0.8462 │ 1.0000 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4506 │ 0.6442 │ 0.7928 │    0.7458 │ 0.8462 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2958 │ 0.4875 │ 0.6517 │    0.5613 │ 0.7768 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2350 │ 0.5960 │ 0.5622 │    0.6559 │ 0.4919 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.4736 │ 0.7524 │ 0.6667 │    0.5926 │ 0.7619 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2240 │ 0.4200 │ 0.3077 │    0.6667 │ 0.2000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1060 │ 0.2929 │ 0.3478 │    0.4444 │ 0.2857 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+Metric __rfdetr_effective_map__ improved by 0.004 >= min_delta = 0.001. New best score: 0.436
+[2026-08-11 02:24:26] [INFO] rf-detr - Best EMA mAP improved to 0.4358 (epoch 11)
+              Val [1m([0mEpoch [1;36m13[0m/[1;36m120[0m[1m)[0m — Overall Metrics              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.3996[0m │ [1;36m0.7355[0m │ [1;36m0.3931[0m │ [1;36m0.6315[0m │ [1;36m0.6842[0m │ [1;36m0.6491[0m │ [1;36m0.7428[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m               Val (Epoch 13/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3860 │ 0.6335 │ 0.6189 │    0.5084 │ 0.7906 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.6153 │ 0.7488 │ 0.8272 │    0.7383 │ 0.9405 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1291 │ 0.6832 │ 0.3535 │    0.3519 │ 0.3551 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5852 │ 0.7587 │ 0.8098 │    0.7213 │ 0.9231 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.4853 │ 0.8492 │ 0.6984 │    0.6769 │ 0.7213 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3302 │ 0.6952 │ 0.5600 │    0.4828 │ 0.6667 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5739 │ 0.6311 │ 0.9462 │    0.9167 │ 0.9778 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5215 │ 0.6092 │ 0.9487 │    0.9250 │ 0.9737 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.6272 │ 0.7386 │ 0.9053 │    0.8431 │ 0.9773 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4517 │ 0.6385 │ 0.7132 │    0.5974 │ 0.8846 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2889 │ 0.4732 │ 0.6397 │    0.5437 │ 0.7768 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2196 │ 0.5621 │ 0.4959 │    0.5085 │ 0.4839 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.3946 │ 0.7714 │ 0.7059 │    0.9231 │ 0.5714 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2840 │ 0.4300 │ 0.5217 │    0.4615 │ 0.6000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1012 │ 0.2500 │ 0.5185 │    0.5385 │ 0.5000 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+              Val [1m([0mEpoch [1;36m14[0m/[1;36m120[0m[1m)[0m — Overall Metrics              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.4133[0m │ [1;36m0.7460[0m │ [1;36m0.3921[0m │ [1;36m0.6344[0m │ [1;36m0.7160[0m │ [1;36m0.7359[0m │ [1;36m0.7167[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m               Val (Epoch 14/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3843 │ 0.6079 │ 0.6637 │    0.5720 │ 0.7906 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.6383 │ 0.7595 │ 0.8800 │    0.8462 │ 0.9167 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1747 │ 0.6822 │ 0.3567 │    0.5600 │ 0.2617 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5818 │ 0.7552 │ 0.8611 │    0.8552 │ 0.8671 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.5358 │ 0.8361 │ 0.7258 │    0.7143 │ 0.7377 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3886 │ 0.6881 │ 0.6154 │    0.6118 │ 0.6190 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.5042 │ 0.6244 │ 0.9247 │    0.8958 │ 0.9556 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5428 │ 0.6382 │ 0.9419 │    0.9241 │ 0.9605 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.6067 │ 0.6977 │ 0.9231 │    0.8936 │ 0.9545 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4765 │ 0.6288 │ 0.8073 │    0.7719 │ 0.8462 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.2925 │ 0.4402 │ 0.5993 │    0.5161 │ 0.7143 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2265 │ 0.5556 │ 0.5561 │    0.7037 │ 0.4597 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.4661 │ 0.7476 │ 0.7368 │    0.8235 │ 0.6667 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.2381 │ 0.4900 │ 0.5882 │    0.7143 │ 0.5000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.1429 │ 0.3643 │ 0.5600 │    0.6364 │ 0.5000 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
+              Val [1m([0mEpoch [1;36m15[0m/[1;36m120[0m[1m)[0m — Overall Metrics              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃           mAP            ┃  mAR   ┃         F1 sweep         ┃
+┡━━━━━━━━┯━━━━━━━━┯━━━━━━━━╇━━━━━━━━╇━━━━━━━━┯━━━━━━━━┯━━━━━━━━┩
+│ [1;92m50:95[0m  │   [1;36m50[0m   │   [1;36m75[0m   │  @[1;36m500[0m  │   F1   │  Prec  │ Recall │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ [1;36m0.3963[0m │ [1;36m0.7265[0m │ [1;36m0.3910[0m │ [1;36m0.6365[0m │ [1;36m0.6886[0m │ [1;36m0.7200[0m │ [1;36m0.6847[0m │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+[1;36m               Val (Epoch 15/120) — Per-class Metrics                [0m
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┓
+┃[1;36m [0m[1;36mClass          [0m[1;36m [0m┃[1;36m [0m[1;36mAP 50:95[0m[1;36m [0m┃[1;36m [0m[1;36m    AR[0m[1;36m [0m┃[1;36m [0m[1;36m    F1[0m[1;36m [0m┃[1;36m [0m[1;36mPrecision[0m[1;36m [0m┃[1;36m [0m[1;36mRecall[0m[1;36m [0m┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━┩
+│[2m [0m[2minclusion      [0m[2m [0m│   0.3739 │ 0.6178 │ 0.6854 │    0.6213 │ 0.7644 │
+│[2m [0m[2mscratches      [0m[2m [0m│   0.5947 │ 0.7357 │ 0.8506 │    0.8222 │ 0.8810 │
+│[2m [0m[2mcrazing        [0m[2m [0m│   0.1161 │ 0.6579 │ 0.1970 │    0.5200 │ 0.1215 │
+│[2m [0m[2mpatches        [0m[2m [0m│   0.5609 │ 0.7559 │ 0.8304 │    0.8219 │ 0.8392 │
+│[2m [0m[2mpitted_surface [0m[2m [0m│   0.4876 │ 0.8328 │ 0.6857 │    0.8182 │ 0.5902 │
+│[2m [0m[2mrolled-in_scale[0m[2m [0m│   0.3080 │ 0.6833 │ 0.5917 │    0.5882 │ 0.5952 │
+│[2m [0m[2mpunching_hole  [0m[2m [0m│   0.6010 │ 0.6733 │ 0.9032 │    0.8750 │ 0.9333 │
+│[2m [0m[2mweld_line      [0m[2m [0m│   0.5340 │ 0.6513 │ 0.9427 │    0.9136 │ 0.9737 │
+│[2m [0m[2mcrescent_gap   [0m[2m [0m│   0.6398 │ 0.7341 │ 0.9167 │    0.8462 │ 1.0000 │
+│[2m [0m[2mwater_spot     [0m[2m [0m│   0.4289 │ 0.6327 │ 0.8261 │    0.9500 │ 0.7308 │
+│[2m [0m[2moil_spot       [0m[2m [0m│   0.3257 │ 0.5000 │ 0.7069 │    0.6833 │ 0.7321 │
+│[2m [0m[2msilk_spot      [0m[2m [0m│   0.2165 │ 0.5419 │ 0.5024 │    0.6265 │ 0.4194 │
+│[2m [0m[2mwaist_folding  [0m[2m [0m│   0.4787 │ 0.7429 │ 0.8000 │    0.8421 │ 0.7619 │
+│[2m [0m[2mcrease         [0m[2m [0m│   0.1995 │ 0.4300 │ 0.5263 │    0.5556 │ 0.5000 │
+│[2m [0m[2mrolled_pit     [0m[2m [0m│   0.0793 │ 0.3571 │ 0.3636 │    0.3158 │ 0.4286 │
+└─────────────────┴──────────┴────────┴────────┴───────────┴────────┘
